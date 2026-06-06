@@ -27,6 +27,7 @@
     @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;700&family=Space+Grotesk:wght@700&display=swap');
     * { font-family: 'JetBrains Mono', monospace; }
     h1, h2 { font-family: 'Space Grotesk', sans-serif; letter-spacing: 0.01em; }
+    .tabular-nums { font-variant-numeric: tabular-nums; }
     ::-webkit-scrollbar { width: 8px; height: 8px; }
     ::-webkit-scrollbar-track { background: #050608; border-left: 1px solid #1B4A4C; }
     ::-webkit-scrollbar-thumb { background: #1B4A4C; }
@@ -47,7 +48,6 @@
   <script type="text/babel">
     const { useState, useRef, useEffect, useCallback } = React;
 
-    // --- Icon components (replaces lucide-react) ---
     const Icon = ({ d, size=16, className='' }) => (
       <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}>
         {d.map((path, i) => <path key={i} d={path} />)}
@@ -61,6 +61,7 @@
     const Crosshair = (p) => <Icon {...p} d={['M12 2v4', 'M12 18v4', 'M2 12h4', 'M18 12h4', 'M12 8a4 4 0 100 8 4 4 0 000-8z']} />;
     const Palette = (p) => <Icon {...p} d={['M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2z', 'M12 8a2 2 0 100 4 2 2 0 000-4z', 'M16 10a2 2 0 100 4 2 2 0 000-4z', 'M8 14a2 2 0 100 4 2 2 0 000-4z', 'M12 16a2 2 0 100 4 2 2 0 000-4z']} />;
     const Sliders = (p) => <Icon {...p} d={['M4 21v-7', 'M4 10V3', 'M12 21v-9', 'M12 8V3', 'M20 21v-5', 'M20 16V3', 'M1 14h6', 'M9 8h6', 'M17 16h6']} />;
+    const AlertTriangle = (p) => <Icon {...p} d={['M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z', 'M12 9v4', 'M12 17h.01']} />;
 
     const COLORS = {
       onyx: '#050608',
@@ -116,7 +117,6 @@
       const [statusText, setStatusText] = useState('STANDBY');
 
       const canvasRef = useRef(null);
-      const audioRef = useRef(null);
       const videoRef = useRef(null);
       const imageElementRef = useRef(null);
       const mediaRecorderRef = useRef(null);
@@ -125,17 +125,13 @@
       const audioContextRef = useRef(null);
       const analyserRef = useRef(null);
       const peaksRef = useRef(new Array(1024).fill(0));
-      const audioSourceRef = useRef(null);
-      const videoSourceRef = useRef(null);
+      const bufferSourceRef = useRef(null);
+      const renderStartTimeRef = useRef(0);
+      const mediaDurationRef = useRef(0);
       const configRef = useRef({ visualStyle, primaryColor, secondaryColor, verticalPosition, amplitudeScale, traceOpacity });
 
-      useEffect(() => {
-        return () => { if (mediaFile) URL.revokeObjectURL(mediaFile); };
-      }, [mediaFile]);
-
-      useEffect(() => {
-        return () => { if (audioFile) URL.revokeObjectURL(audioFile); };
-      }, [audioFile]);
+      useEffect(() => { return () => { if (mediaFile) URL.revokeObjectURL(mediaFile); }; }, [mediaFile]);
+      useEffect(() => { return () => { if (audioFile) URL.revokeObjectURL(audioFile); }; }, [audioFile]);
 
       const drawGrid = (ctx, width, height) => {
         ctx.strokeStyle = 'rgba(77, 227, 224, 0.18)';
@@ -219,10 +215,11 @@
       };
 
       const renderFrame = () => {
-        if (!analyserRef.current || !canvasRef.current) return;
+        if (!analyserRef.current || !canvasRef.current || !audioContextRef.current) return;
         const canvas = canvasRef.current;
         const ctx = canvas.getContext('2d');
         const analyser = analyserRef.current;
+        const audioCtx = audioContextRef.current;
         const bufferLength = analyser.frequencyBinCount;
         const { visualStyle: vs, primaryColor: pc, secondaryColor: sc, verticalPosition: vp, amplitudeScale: as, traceOpacity: to } = configRef.current;
         drawStaticPreview();
@@ -283,47 +280,52 @@
           ctx.shadowBlur = 0;
         }
         ctx.globalAlpha = 1.0;
-        const primaryMedia = audioFile ? audioRef.current : videoRef.current;
-        if (primaryMedia && !primaryMedia.paused) {
-          const current = primaryMedia.currentTime, total = primaryMedia.duration;
-          if (total) setProgress(Math.floor((current / total) * 100));
+        const elapsed = audioCtx.currentTime - renderStartTimeRef.current;
+        if (mediaDurationRef.current > 0) {
+          const currentProgress = Math.min(100, Math.floor((elapsed / mediaDurationRef.current) * 100));
+          setProgress(currentProgress);
         }
-        animationFrameRef.current = requestAnimationFrame(renderFrame);
+        if (isProcessing) {
+          animationFrameRef.current = requestAnimationFrame(renderFrame);
+        }
       };
 
       const startProcessing = async () => {
         if (!mediaFile) { alert("Missing base plate. A Video or Image is required."); return; }
         try {
-          setIsProcessing(true); setProgress(0); setStatusText('INITIATING_CAPTURE_SEQUENCE');
-          recordedChunksRef.current = [];
+          setIsProcessing(true); setProgress(0); recordedChunksRef.current = [];
+          setStatusText('DECODING_AUDIO_BUFFER...');
           if (!audioContextRef.current) audioContextRef.current = new (window.AudioContext || window.webkitAudioContext)();
           const audioCtx = audioContextRef.current;
           if (audioCtx.state === 'suspended') await audioCtx.resume();
-          if (!analyserRef.current) analyserRef.current = audioCtx.createAnalyser();
+
+          const sourceUrl = audioFile || mediaFile;
+          const response = await fetch(sourceUrl);
+          const arrayBuffer = await response.arrayBuffer();
+          const decodedAudio = await audioCtx.decodeAudioData(arrayBuffer);
+          mediaDurationRef.current = decodedAudio.duration;
+
+          analyserRef.current = audioCtx.createAnalyser();
           analyserRef.current.fftSize = visualStyle === 'spectrum' ? 256 : 1024;
+          bufferSourceRef.current = audioCtx.createBufferSource();
+          bufferSourceRef.current.buffer = decodedAudio;
           const destination = audioCtx.createMediaStreamDestination();
-          const useDedicatedAudio = !!audioFile;
-          const activeMediaEl = useDedicatedAudio ? audioRef.current : videoRef.current;
-          if (activeMediaEl && !activeMediaEl.src.startsWith('blob:')) activeMediaEl.crossOrigin = "anonymous";
-          if (videoRef.current && !videoRef.current.src.startsWith('blob:')) videoRef.current.crossOrigin = "anonymous";
-          // Create media element sources
-          if (useDedicatedAudio && audioRef.current) {
-            if (!audioSourceRef.current) audioSourceRef.current = audioCtx.createMediaElementSource(audioRef.current);
-          } else if (!useDedicatedAudio && videoRef.current) {
-            if (!videoSourceRef.current) videoSourceRef.current = audioCtx.createMediaElementSource(videoRef.current);
-          }
-          const activeSource = useDedicatedAudio ? audioSourceRef.current : videoSourceRef.current;
-          if (activeSource) { activeSource.connect(analyserRef.current); analyserRef.current.connect(destination); analyserRef.current.connect(audioCtx.destination); }
-          if (mediaType === 'video' && videoRef.current) { videoRef.current.muted = useDedicatedAudio; videoRef.current.loop = useDedicatedAudio; }
+
+          bufferSourceRef.current.connect(analyserRef.current);
+          analyserRef.current.connect(destination);
+          analyserRef.current.connect(audioCtx.destination);
+
+          setStatusText('INITIALIZING_MUXER...');
           const canvas = canvasRef.current;
           const canvasStream = canvas.captureStream(30);
-          const tracks = [...canvasStream.getVideoTracks()];
-          if (activeSource) tracks.push(...destination.stream.getAudioTracks());
+          const tracks = [...canvasStream.getVideoTracks(), ...destination.stream.getAudioTracks()];
           const combinedStream = new MediaStream(tracks);
-          let options = { mimeType: 'video/webm;codecs=vp9' };
-          if (!MediaRecorder.isTypeSupported(options.mimeType)) options = { mimeType: 'video/webm;codecs=vp8' };
+
+          let options = { mimeType: 'video/webm;codecs=vp9,opus' };
+          if (!MediaRecorder.isTypeSupported(options.mimeType)) options = { mimeType: 'video/webm;codecs=vp8,opus' };
           if (!MediaRecorder.isTypeSupported(options.mimeType)) options = { mimeType: 'video/webm' };
           if (!MediaRecorder.isTypeSupported(options.mimeType)) options = { mimeType: 'video/mp4' };
+
           mediaRecorderRef.current = new MediaRecorder(combinedStream, options);
           mediaRecorderRef.current.ondataavailable = (e) => { if (e.data.size > 0) recordedChunksRef.current.push(e.data); };
           mediaRecorderRef.current.onstop = () => {
@@ -334,25 +336,35 @@
             setIsProcessing(false); setStatusText('RENDER_COMPLETE // EXPORT_READY');
             cancelAnimationFrame(animationFrameRef.current);
           };
+
+          bufferSourceRef.current.onended = () => {
+            if (mediaRecorderRef.current && mediaRecorderRef.current.state === 'recording') mediaRecorderRef.current.stop();
+            if (videoRef.current) videoRef.current.pause();
+          };
+
+          setStatusText('RECORDING_ACTIVE_REAL_TIME...');
           mediaRecorderRef.current.start();
-          if (mediaType === 'video' && videoRef.current) { videoRef.current.currentTime = 0; videoRef.current.play(); }
-          if (useDedicatedAudio && audioRef.current) { audioRef.current.currentTime = 0; audioRef.current.play(); }
-          setStatusText('RECORDING_ACTIVE');
+          if (mediaType === 'video' && videoRef.current) {
+            videoRef.current.currentTime = 0;
+            videoRef.current.muted = true;
+            videoRef.current.play();
+          }
+          renderStartTimeRef.current = audioCtx.currentTime;
+          bufferSourceRef.current.start(0);
           renderFrame();
         } catch (error) {
           console.error("[SENTINEL_ERROR]", error);
           setIsProcessing(false); setStatusText('ERROR // INITIALIZATION_FAILED');
-          alert(`Render Initialization Failed: ${error.message}`);
+          alert(`Render Failed: ${error.message}. Ensure the file contains a valid audio track.`);
         }
       };
 
-      const stopProcessing = () => {
+      const abortProcessing = () => {
         if (mediaRecorderRef.current && mediaRecorderRef.current.state === 'recording') mediaRecorderRef.current.stop();
-        if (audioRef.current) { audioRef.current.pause(); audioRef.current.currentTime = 0; }
-        if (videoRef.current) { videoRef.current.pause(); videoRef.current.currentTime = 0; }
+        if (bufferSourceRef.current) { try { bufferSourceRef.current.stop(); } catch(e) {} }
+        if (videoRef.current) videoRef.current.pause();
+        setStatusText('RENDER_ABORTED // INCOMPLETE_ASSET_GENERATED');
       };
-
-      const handleMediaEnd = () => { if (isProcessing) stopProcessing(); };
 
       return (
         <div className="min-h-screen bg-[#050608] text-[#E4E8EC] p-4 md:p-8 selection:bg-[#4DE3E0] selection:text-[#050608]">
@@ -375,16 +387,19 @@
                   <span>[SYSTEM_STATUS]</span>
                   <Activity size={14} className={isProcessing ? "text-[#FF6A1A] animate-pulse" : ""} />
                 </div>
-                <div className={`font-bold tabular-nums ${isProcessing ? 'text-[#FF6A1A]' : 'text-[#E4E8EC]'}`}>{statusText}</div>
+                <div className={`font-bold tabular-nums text-xs sm:text-sm ${isProcessing ? 'text-[#FF6A1A]' : 'text-[#E4E8EC]'}`}>{statusText}</div>
                 {isProcessing && (
                   <div className="mt-4">
-                    <div className="flex justify-between text-xs mb-1"><span>PROGRESS</span><span className="tabular-nums">{progress}%</span></div>
-                    <div className="h-1 bg-[#050608] border border-[#1B4A4C]"><div className="h-full bg-[#4DE3E0] transition-all duration-100" style={{ width: `${progress}%` }}></div></div>
+                    <div className="flex justify-between text-xs mb-1 text-[#FF6A1A]">
+                      <span className="animate-pulse">DO NOT MINIMIZE TAB OR NAVIGATE AWAY</span>
+                      <span className="tabular-nums">{progress}%</span>
+                    </div>
+                    <div className="h-1 bg-[#050608] border border-[#1B4A4C]"><div className="h-full bg-[#FF6A1A] transition-all duration-100" style={{ width: `${progress}%` }}></div></div>
                   </div>
                 )}
               </div>
 
-              <div className="bg-[#0A0D10] border border-[#1B4A4C] p-4 relative space-y-4">
+              <div className={`bg-[#0A0D10] border border-[#1B4A4C] p-4 relative space-y-4 transition-opacity ${isProcessing ? 'opacity-50 pointer-events-none' : ''}`}>
                 <div className="text-[#4DE3E0] text-xs mb-4 border-b border-[#1B4A4C] pb-2 flex items-center gap-2"><Upload size={14} /> [ASSET_INGESTION]</div>
                 <div>
                   <label className="block text-xs mb-2 text-[#E4E8EC]">01 // BASE PLATE (VIDEO OR IMAGE)</label>
@@ -393,7 +408,7 @@
                     <Upload size={14} className="text-[#4DE3E0]" />
                     <input type="file" accept="image/*,video/*" onChange={handleMediaUpload} className="absolute inset-0 opacity-0 cursor-pointer" />
                   </div>
-                  <p className="text-[10px] text-[#1B4A4C] mt-1">If video, native audio will be extracted automatically.</p>
+                  <p className="text-[10px] text-[#1B4A4C] mt-1">If video, native audio will be extracted and decoded automatically.</p>
                 </div>
                 <div>
                   <label className="block text-xs mb-2 text-[#E4E8EC]">02 // DEDICATED AUDIO TRACK (OPTIONAL)</label>
@@ -404,8 +419,7 @@
                   </div>
                   <p className="text-[10px] text-[#1B4A4C] mt-1">Overrides base plate audio if provided.</p>
                 </div>
-                <audio ref={audioRef} src={audioFile} onEnded={handleMediaEnd} className="hidden" />
-                <video ref={videoRef} src={mediaType === 'video' ? mediaFile : null} onEnded={!audioFile ? handleMediaEnd : undefined} className="hidden" playsInline />
+                <video ref={videoRef} src={mediaType === 'video' ? mediaFile : null} className="hidden" playsInline />
               </div>
 
               <div className="bg-[#0A0D10] border border-[#1B4A4C] p-4 relative space-y-6">
@@ -465,7 +479,10 @@
                 {!isProcessing ? (
                   <BrutalistButton onClick={startProcessing} disabled={!mediaFile} className="w-full" variant={mediaFile ? 'teal' : 'ghost'}><Play size={16} /> INITIALIZE RENDER</BrutalistButton>
                 ) : (
-                  <BrutalistButton onClick={stopProcessing} className="w-full" variant="orange"><Square size={16} /> ABORT SEQUENCE</BrutalistButton>
+                  <BrutalistButton onClick={abortProcessing} className="w-full flex-col h-auto py-3 gap-1 border-dashed" variant="orange">
+                    <div className="flex items-center gap-2"><AlertTriangle size={16} /><span>ABORT (INCOMPLETE RENDER)</span></div>
+                    <span className="text-[10px] opacity-80">Stop and save current progress only</span>
+                  </BrutalistButton>
                 )}
               </div>
             </div>
