@@ -306,6 +306,12 @@
           const activeMediaEl = useDedicatedAudio ? audioRef.current : videoRef.current;
           if (activeMediaEl && !activeMediaEl.src.startsWith('blob:')) activeMediaEl.crossOrigin = "anonymous";
           if (videoRef.current && !videoRef.current.src.startsWith('blob:')) videoRef.current.crossOrigin = "anonymous";
+          // Create media element sources
+          if (useDedicatedAudio && audioRef.current) {
+            if (!audioSourceRef.current) audioSourceRef.current = audioCtx.createMediaElementSource(audioRef.current);
+          } else if (!useDedicatedAudio && videoRef.current) {
+            if (!videoSourceRef.current) videoSourceRef.current = audioCtx.createMediaElementSource(videoRef.current);
+          }
           const activeSource = useDedicatedAudio ? audioSourceRef.current : videoSourceRef.current;
           if (activeSource) { activeSource.connect(analyserRef.current); analyserRef.current.connect(destination); analyserRef.current.connect(audioCtx.destination); }
           if (mediaType === 'video' && videoRef.current) { videoRef.current.muted = useDedicatedAudio; videoRef.current.loop = useDedicatedAudio; }
