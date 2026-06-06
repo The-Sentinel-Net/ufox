@@ -1,9 +1,0 @@
-name = "ufox-signal-extractor"
-compatibility_date = "2026-05-05"
-workers_dev = false
-routes = [
-  { pattern = "ufox.thesentinel.network/*", zone_name = "thesentinel.network" }
-]
-
-[assets]
-directory = "."
