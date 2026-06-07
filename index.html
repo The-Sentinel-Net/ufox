@@ -1,526 +1,606 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>SIGNAL_PROCESSOR // THE SENTINEL NETWORK</title>
-  <!-- v2 rebuild -->
-  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>◈</text></svg>" />
-  <script src="https://cdn.tailwindcss.com"></script>
-  <script>
-    tailwind.config = {
-      theme: {
-        extend: {
-          colors: {
-            onyx: '#050608',
-            panel: '#0A0D10',
-            teal: '#4DE3E0',
-            tealMuted: '#1B4A4C',
-            sentinelOrange: '#FF6A1A',
-            fog: '#E4E8EC',
-            sentinelRed: '#FF3B3B'
-          }
-        }
-      }
-    }
-  </script>
-  <style>
-    @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;700&family=Space+Grotesk:wght@700&display=swap');
-    * { font-family: 'JetBrains Mono', monospace; }
-    h1, h2 { font-family: 'Space Grotesk', sans-serif; letter-spacing: 0.01em; }
-    .tabular-nums { font-variant-numeric: tabular-nums; }
-    ::-webkit-scrollbar { width: 8px; height: 8px; }
-    ::-webkit-scrollbar-track { background: #050608; border-left: 1px solid #1B4A4C; }
-    ::-webkit-scrollbar-thumb { background: #1B4A4C; }
-    ::-webkit-scrollbar-thumb:hover { background: #4DE3E0; }
-    input[type="color"] { -webkit-appearance: none; border: none; padding: 0; background: none; cursor: pointer; }
-    input[type="color"]::-webkit-color-swatch-wrapper { padding: 0; }
-    input[type="color"]::-webkit-color-swatch { border: 1px solid #1B4A4C; border-radius: 0; }
-    input[type="range"] { accent-color: #4DE3E0; }
-  </style>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+<title>SENTINEL // OVERLAY STUDIO</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;700&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#050608; --panel:#0a0d10; --line:rgba(228,232,236,.07); --line2:rgba(228,232,236,.14);
+    --teal:#4DE3E0; --orange:#FF6A1A; --fog:#E4E8EC; --dim:#7c878c; --fail:#FF5B5B;
+    --mono:"JetBrains Mono",ui-monospace,monospace; --disp:"Space Grotesk",system-ui,sans-serif;
+  }
+  *{box-sizing:border-box}
+  html,body{height:100%;margin:0}
+  body{background:var(--bg);color:var(--fog);font-family:var(--mono);font-size:13px;-webkit-font-smoothing:antialiased;height:100vh;display:flex;flex-direction:column;overflow:hidden}
+  button{font-family:inherit}
+  header{display:flex;align-items:center;justify-content:space-between;padding:11px 16px;border-bottom:1px solid var(--line);flex:0 0 auto}
+  .brand{display:flex;align-items:center;gap:10px}
+  .glyph{width:11px;height:11px;background:var(--teal);box-shadow:0 0 10px var(--teal);transform:rotate(45deg)}
+  .brand h1{font-family:var(--disp);font-weight:700;font-size:13px;letter-spacing:.16em;margin:0;text-transform:uppercase}
+  .brand .sub{color:var(--dim);font-size:9px;letter-spacing:.2em;text-transform:uppercase}
+  .pill{font-size:9px;letter-spacing:.16em;text-transform:uppercase;color:var(--dim)}
+  .embedwarn{display:none;background:rgba(255,106,26,.1);border-bottom:1px solid var(--orange);color:var(--fog);padding:8px 16px;font-size:11px;line-height:1.5;flex:0 0 auto}
+  .embedwarn.show{display:block}
+  .embedwarn b{color:var(--orange)}
+  .app{flex:1;display:flex;min-height:0}
+  .main{flex:1;display:flex;flex-direction:column;min-width:0;min-height:0}
+  .preview{flex:1;position:relative;display:grid;place-items:center;padding:28px;min-height:0;overflow:hidden;background:radial-gradient(70% 70% at 50% 40%, rgba(77,227,224,.05), transparent 70%)}
+  .canvasWrap{position:relative;display:none;aspect-ratio:var(--ar,1);width:calc(78vh * var(--ar,1));max-width:100%;max-height:100%;background:#000;box-shadow:0 0 0 1px var(--line2),0 30px 80px rgba(0,0,0,.7);touch-action:none}
+  .canvasWrap.ready{display:block;cursor:grab}
+  .canvasWrap.ready:active{cursor:grabbing}
+  #video{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;display:none;z-index:0;background:#000}
+  .canvasWrap.video-mode #video{display:block}
+  #overlay{position:absolute;inset:0;width:100%;height:100%;z-index:1;display:block}
+  .dropzone{position:absolute;inset:28px;border:1px dashed var(--line2);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:12px;text-align:center;color:var(--dim);cursor:pointer;transition:.18s;padding:24px}
+  .dropzone.hot{border-color:var(--teal);color:var(--fog);background:rgba(77,227,224,.04)}
+  .dropzone .big{font-family:var(--disp);font-weight:700;font-size:19px;color:var(--fog);letter-spacing:.02em}
+  .dropzone .arrow{font-size:30px;color:var(--teal)}
+  .dropzone code{color:var(--teal)}
+  .dropzone small{font-size:10px;line-height:1.8}
+  .droperr{display:none;color:var(--fail);border:1px solid var(--fail);background:rgba(255,91,91,.07);padding:9px 12px;margin-top:6px;max-width:460px;font-size:11px;line-height:1.65;text-align:left}
+  .droperr code{font-size:10px;word-break:break-all}
+  .droperr b{color:var(--fog)}
+  .draghint{position:absolute;top:12px;left:50%;transform:translateX(-50%);font-size:9px;letter-spacing:.22em;text-transform:uppercase;color:var(--dim);background:rgba(5,6,8,.55);border:1px solid var(--line2);padding:4px 9px;display:none;pointer-events:none;transition:opacity .5s;z-index:6}
+  #canvasWrap.ready ~ #dragHint{display:block}
+  .transport{display:flex;align-items:center;gap:12px;padding:10px 16px;border-top:1px solid var(--line);flex:0 0 auto}
+  .transport.hidden{display:none}
+  .iconbtn{background:var(--teal);color:#022;border:none;width:34px;height:34px;cursor:pointer;font-size:14px;display:grid;place-items:center;flex:0 0 auto;border-radius:2px}
+  .iconbtn:active{transform:translateY(1px)}
+  .iconbtn.ghost{background:transparent;border:1px solid var(--line2);color:var(--fog)}
+  .seek{flex:1;display:flex;flex-direction:column;gap:4px}
+  .time{display:flex;justify-content:space-between;font-size:9px;color:var(--dim);letter-spacing:.12em}
+  .inspector{width:340px;border-left:1px solid var(--line);display:flex;flex-direction:column;min-height:0;flex:0 0 auto;background:var(--panel)}
+  .tabs{display:flex;border-bottom:1px solid var(--line);flex:0 0 auto}
+  .tab{flex:1;background:transparent;border:none;color:var(--dim);cursor:pointer;padding:12px 4px 10px;display:flex;flex-direction:column;align-items:center;gap:6px;font-size:9px;letter-spacing:.1em;text-transform:uppercase;position:relative;transition:.15s}
+  .tab svg{width:18px;height:18px;stroke:currentColor;fill:none;stroke-width:1.6;stroke-linecap:round;stroke-linejoin:round}
+  .tab:hover{color:var(--fog)}
+  .tab.active{color:var(--teal)}
+  .tab.active::after{content:"";position:absolute;left:20%;right:20%;bottom:-1px;height:2px;background:var(--teal)}
+  .panels{flex:1;overflow-y:auto;padding:20px 16px}
+  .grp{display:none}
+  .grid{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+  .vischip{border:1px solid var(--line2);background:transparent;color:var(--fog);cursor:pointer;padding:15px 8px;display:flex;flex-direction:column;align-items:center;gap:9px;font-size:10px;letter-spacing:.1em;text-transform:uppercase;transition:.15s;border-radius:2px}
+  .vischip svg{width:34px;height:24px}
+  .vischip:hover{border-color:var(--dim)}
+  .vischip.active{border-color:var(--teal);color:var(--teal);background:rgba(77,227,224,.06)}
+  .field{margin:0 0 17px}
+  .field:last-child{margin-bottom:0}
+  .flabel{display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;font-size:10px;letter-spacing:.12em;text-transform:uppercase;color:var(--dim)}
+  .flabel .val{color:var(--teal)}
+  input[type=range]{-webkit-appearance:none;appearance:none;width:100%;height:2px;background:var(--line2);outline:none}
+  input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;appearance:none;width:14px;height:14px;background:var(--teal);cursor:pointer;border:none;border-radius:50%;box-shadow:0 0 10px rgba(77,227,224,.55)}
+  input[type=range]::-moz-range-thumb{width:14px;height:14px;background:var(--teal);cursor:pointer;border:none;border-radius:50%}
+  .colors{display:flex;gap:10px}
+  .colors .c{flex:1;display:flex;flex-direction:column;gap:7px;align-items:center}
+  .colors .c span{font-size:9px;letter-spacing:.1em;text-transform:uppercase;color:var(--dim)}
+  input[type=color]{-webkit-appearance:none;appearance:none;width:100%;height:34px;border:1px solid var(--line2);background:transparent;cursor:pointer;padding:2px;border-radius:2px}
+  input[type=color]::-webkit-color-swatch-wrapper{padding:0}
+  input[type=color]::-webkit-color-swatch{border:none;border-radius:1px}
+  .swatches{display:flex;gap:6px;margin-top:16px;flex-wrap:wrap}
+  .sw{width:22px;height:22px;border:1px solid #0006;cursor:pointer;border-radius:2px}
+  .themes{display:flex;flex-direction:column;gap:7px;margin-top:16px}
+  .themechip{display:flex;align-items:center;gap:11px;width:100%;border:1px solid var(--line2);background:transparent;color:var(--fog);cursor:pointer;padding:9px 11px;border-radius:2px;font-family:var(--mono);font-size:11px;text-align:left;transition:.15s}
+  .themechip:hover{border-color:var(--dim)}
+  .themechip.active{border-color:var(--teal);background:rgba(77,227,224,.06)}
+  .themechip .dot{width:28px;height:18px;border-radius:2px;border:1px solid rgba(0,0,0,.45);flex:0 0 auto}
+  .themechip .tname{letter-spacing:.13em;text-transform:uppercase}
+  .seg{display:flex;border:1px solid var(--line2);border-radius:2px;overflow:hidden}
+  .seg button{flex:1;background:transparent;border:none;border-right:1px solid var(--line2);color:var(--fog);cursor:pointer;padding:9px 4px;font-size:10px;letter-spacing:.06em;text-transform:uppercase}
+  .seg button:last-child{border-right:none}
+  .seg button.active{background:var(--teal);color:#022;font-weight:700}
+  .txtin,.selin{width:100%;background:#06090b;border:1px solid var(--line2);color:var(--fog);font-family:var(--mono);font-size:12px;padding:9px;outline:none;border-radius:2px}
+  .txtin:focus,.selin:focus{border-color:var(--teal)}
+  .togglerow{display:flex;align-items:center;gap:9px;margin-top:16px}
+  .togglerow input{accent-color:var(--teal);width:15px;height:15px}
+  .togglerow label{font-size:10px;letter-spacing:.1em;text-transform:uppercase;color:var(--dim)}
+  .btn{width:100%;border:none;cursor:pointer;font-family:var(--disp);font-weight:700;font-size:13px;letter-spacing:.08em;text-transform:uppercase;padding:14px;border-radius:2px;transition:.15s}
+  .btn.primary{background:var(--orange);color:#0a0500}
+  .btn.primary:hover{filter:brightness(1.08)}
+  .btn:disabled{opacity:.35;cursor:not-allowed;filter:grayscale(.4)}
+  .btn.stop{background:var(--fail);color:#170000}
+  .hint{font-size:10px;color:var(--dim);line-height:1.65;margin-top:11px}
+  .hint b{color:var(--fog)}
+  .progress{height:3px;background:var(--line2);margin-top:12px;display:none;border-radius:2px;overflow:hidden}
+  .progress.on{display:block}
+  .progress>i{display:block;height:100%;width:0;background:var(--teal);transition:width .12s linear}
+  #toast{position:fixed;left:50%;bottom:24px;transform:translateX(-50%) translateY(20px);opacity:0;pointer-events:none;background:#0c1014;border:1px solid var(--teal);color:var(--fog);padding:10px 16px;font-size:11px;letter-spacing:.04em;transition:.25s;z-index:50;max-width:90vw}
+  #toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+  #toast.err{border-color:var(--fail);color:#ffd6d6}
+  @media (max-width:900px){
+    .app{flex-direction:column}
+    .preview{padding:16px}
+    .canvasWrap{width:auto;height:auto;max-height:40vh;max-width:100%}
+    .inspector{width:auto;border-left:none;border-top:1px solid var(--line);max-height:48vh}
+    .panels{padding:16px}
+  }
+</style>
 </head>
-<body class="bg-onyx">
-  <div id="root"></div>
+<body>
 
-  <script src="https://unpkg.com/react@18/umd/react.production.min.js" crossorigin></script>
-  <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js" crossorigin></script>
-  <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+<header>
+  <div class="brand">
+    <div class="glyph"></div>
+    <div>
+      <h1>Overlay Studio</h1>
+      <div class="sub">The Sentinel Network&trade;</div>
+    </div>
+  </div>
+  <div class="pill">in-browser &middot; nothing uploaded</div>
+</header>
 
-  <script type="text/babel">
-    const { useState, useRef, useEffect, useCallback } = React;
+<div id="embedWarn" class="embedwarn"><b>Heads up:</b> this page is running inside an embedded frame (e.g. the chat preview). Video playback and export are blocked here by the sandbox. Download <b>index.html</b> and open it directly in Chrome, or load it from your live URL.</div>
 
-    const Icon = ({ d, size=16, className='' }) => (
-      <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}>
-        {d.map((path, i) => <path key={i} d={path} />)}
-      </svg>
-    );
-    const Play = (p) => <Icon {...p} d={['M5 3l14 9-14 9V3z']} />;
-    const Square = (p) => <Icon {...p} d={['M3 3h18v18H3V3z', 'M3 9h18', 'M9 3v18']} />;
-    const Download = (p) => <Icon {...p} d={['M12 3v12', 'M7 11l5 5 5-5', 'M5 21h14']} />;
-    const Upload = (p) => <Icon {...p} d={['M12 3v12', 'M7 8l5-5 5 5', 'M5 21h14']} />;
-    const Activity = (p) => <Icon {...p} d={['M22 12h-4l-3 9L9 3l-3 9H2']} />;
-    const Crosshair = (p) => <Icon {...p} d={['M12 2v4', 'M12 18v4', 'M2 12h4', 'M18 12h4', 'M12 8a4 4 0 100 8 4 4 0 000-8z']} />;
-    const Palette = (p) => <Icon {...p} d={['M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2z', 'M12 8a2 2 0 100 4 2 2 0 000-4z', 'M16 10a2 2 0 100 4 2 2 0 000-4z', 'M8 14a2 2 0 100 4 2 2 0 000-4z', 'M12 16a2 2 0 100 4 2 2 0 000-4z']} />;
-    const Sliders = (p) => <Icon {...p} d={['M4 21v-7', 'M4 10V3', 'M12 21v-9', 'M12 8V3', 'M20 21v-5', 'M20 16V3', 'M1 14h6', 'M9 8h6', 'M17 16h6']} />;
-    const AlertTriangle = (p) => <Icon {...p} d={['M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z', 'M12 9v4', 'M12 17h.01']} />;
+<div class="app">
+  <div class="main">
+    <div class="preview">
+      <div class="canvasWrap" id="canvasWrap">
+        <video id="video" playsinline></video>
+        <canvas id="overlay" width="1080" height="1080"></canvas>
+      </div>
+      <div class="dropzone" id="dropzone">
+        <div class="arrow">&#9660;</div>
+        <div class="big">Drop a video &mdash; or audio</div>
+        <small><code>click to browse</code> &middot; mp4 / webm / mov &middot; mp3 / wav / m4a<br>drop an image to set a background (audio mode)</small>
+        <div id="dropErr" class="droperr"></div>
+      </div>
+      <div class="draghint" id="dragHint">drag to reposition</div>
+    </div>
+    <div class="transport hidden" id="transport">
+      <button class="iconbtn" id="playBtn" title="Play / pause">&#9658;</button>
+      <div class="seek">
+        <input type="range" id="seek" min="0" max="1000" value="0">
+        <div class="time"><span id="tCur">0:00</span><span id="tDur">0:00</span></div>
+      </div>
+      <button class="iconbtn ghost" id="newFileBtn" title="Load different file">&#8634;</button>
+    </div>
+    <input type="file" id="mediaInput" accept="video/*,audio/*" hidden>
+  </div>
 
-    const COLORS = {
-      onyx: '#050608',
-      panel: '#0A0D10',
-      tealPrimary: '#4DE3E0',
-      tealMuted: '#1B4A4C',
-      orange: '#FF6A1A',
-      fog: '#E4E8EC',
-      red: '#FF3B3B'
-    };
+  <aside class="inspector">
+    <nav class="tabs">
+      <button class="tab active" data-tab="graphic"><svg viewBox="0 0 24 24"><line x1="4" y1="20" x2="4" y2="13"/><line x1="9" y1="20" x2="9" y2="6"/><line x1="14" y1="20" x2="14" y2="10"/><line x1="19" y1="20" x2="19" y2="4"/></svg><span>Graphic</span></button>
+      <button class="tab" data-tab="color"><svg viewBox="0 0 24 24"><path d="M12 3c0 0 6.5 6.8 6.5 11a6.5 6.5 0 0 1-13 0C5.5 9.8 12 3 12 3z"/></svg><span>Color</span></button>
+      <button class="tab" data-tab="layout"><svg viewBox="0 0 24 24"><rect x="4" y="4" width="16" height="16" rx="1"/><line x1="12" y1="4" x2="12" y2="20"/><line x1="4" y1="14" x2="20" y2="14"/></svg><span>Layout</span></button>
+      <button class="tab" data-tab="audio"><svg viewBox="0 0 24 24"><path d="M3 12h3l2.5-6 4 13 2.5-7H21"/></svg><span>Audio</span></button>
+      <button class="tab" data-tab="export"><svg viewBox="0 0 24 24"><path d="M12 3v12"/><path d="M7 11l5 5 5-5"/><path d="M4 20h16"/></svg><span>Export</span></button>
+    </nav>
+    <div class="panels">
+      <div class="grp" data-group="graphic" style="display:block"><div class="grid" id="visGrid"></div></div>
 
-    const SWATCHES = [
-      { label: 'TEAL', value: COLORS.tealPrimary },
-      { label: 'ORANGE', value: COLORS.orange },
-      { label: 'RED', value: COLORS.red },
-      { label: 'FOG', value: COLORS.fog }
-    ];
-
-    const CornerBrackets = () => (
-      React.createElement(React.Fragment, null,
-        React.createElement('div', { className: "absolute top-0 left-0 w-3 h-3 border-t-2 border-l-2 border-[#4DE3E0] pointer-events-none" }),
-        React.createElement('div', { className: "absolute top-0 right-0 w-3 h-3 border-t-2 border-r-2 border-[#4DE3E0] pointer-events-none" }),
-        React.createElement('div', { className: "absolute bottom-0 left-0 w-3 h-3 border-b-2 border-l-2 border-[#4DE3E0] pointer-events-none" }),
-        React.createElement('div', { className: "absolute bottom-0 right-0 w-3 h-3 border-b-2 border-r-2 border-[#4DE3E0] pointer-events-none" })
-      )
-    );
-
-    const BrutalistButton = ({ children, onClick, disabled, variant = 'teal', className = '', active = false }) => {
-      const baseClasses = "relative px-4 py-2 font-mono text-sm uppercase tracking-wider border transition-colors duration-150 active:translate-y-[1px] active:translate-x-[1px] disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2";
-      const variants = {
-        teal: "text-[#4DE3E0] border-[#4DE3E0] hover:bg-[#4DE3E0] hover:text-[#050608]",
-        orange: "text-[#FF6A1A] border-[#FF6A1A] hover:bg-[#FF6A1A] hover:text-[#050608]",
-        ghost: "text-[#E4E8EC] border-[#1B4A4C] hover:border-[#4DE3E0]",
-        activeTeal: "bg-[#4DE3E0] text-[#050608] border-[#4DE3E0]"
-      };
-      const currentVariant = active ? 'activeTeal' : variant;
-      return React.createElement('button', { onClick, disabled, className: `${baseClasses} ${variants[currentVariant]} ${className}` }, children);
-    };
-
-    function App() {
-      const [audioFile, setAudioFile] = useState(null);
-      const [mediaFile, setMediaFile] = useState(null);
-      const [mediaType, setMediaType] = useState(null);
-      const [visualStyle, setVisualStyle] = useState('spectrum');
-      const [primaryColor, setPrimaryColor] = useState(COLORS.tealPrimary);
-      const [secondaryColor, setSecondaryColor] = useState(COLORS.orange);
-      const [verticalPosition, setVerticalPosition] = useState(100);
-      const [amplitudeScale, setAmplitudeScale] = useState(1.0);
-      const [traceOpacity, setTraceOpacity] = useState(1.0);
-      const [isProcessing, setIsProcessing] = useState(false);
-      const [progress, setProgress] = useState(0);
-      const [outputVideo, setOutputVideo] = useState(null);
-      const [statusText, setStatusText] = useState('STANDBY');
-
-      const canvasRef = useRef(null);
-      const videoRef = useRef(null);
-      const imageElementRef = useRef(null);
-      const mediaRecorderRef = useRef(null);
-      const recordedChunksRef = useRef([]);
-      const animationFrameRef = useRef(null);
-      const audioContextRef = useRef(null);
-      const analyserRef = useRef(null);
-      const peaksRef = useRef(new Array(1024).fill(0));
-      const bufferSourceRef = useRef(null);
-      const renderStartTimeRef = useRef(0);
-      const mediaDurationRef = useRef(0);
-      const configRef = useRef({ visualStyle, primaryColor, secondaryColor, verticalPosition, amplitudeScale, traceOpacity });
-
-      useEffect(() => { return () => { if (mediaFile) URL.revokeObjectURL(mediaFile); }; }, [mediaFile]);
-      useEffect(() => { return () => { if (audioFile) URL.revokeObjectURL(audioFile); }; }, [audioFile]);
-
-      const drawGrid = (ctx, width, height) => {
-        ctx.strokeStyle = 'rgba(77, 227, 224, 0.18)';
-        ctx.lineWidth = 1;
-        const step = 40;
-        ctx.beginPath();
-        for (let x = 0; x <= width; x += step) { ctx.moveTo(x, 0); ctx.lineTo(x, height); }
-        for (let y = 0; y <= height; y += step) { ctx.moveTo(0, y); ctx.lineTo(width, y); }
-        ctx.stroke();
-      };
-
-      const drawMediaCover = (ctx, cw, ch, ew, eh, fn) => {
-        const scale = Math.max(cw / ew, ch / eh);
-        const w = ew * scale, h = eh * scale;
-        fn((cw - w) / 2, (ch - h) / 2, w, h);
-      };
-
-      const drawStaticPreview = useCallback(() => {
-        const canvas = canvasRef.current;
-        if (!canvas) return;
-        const ctx = canvas.getContext('2d');
-        ctx.fillStyle = COLORS.onyx;
-        ctx.fillRect(0, 0, canvas.width, canvas.height);
-
-        if (mediaType === 'image' && imageElementRef.current) {
-          const img = imageElementRef.current;
-          drawMediaCover(ctx, canvas.width, canvas.height, img.width, img.height, (x, y, w, h) => ctx.drawImage(img, x, y, w, h));
-        } else if (mediaType === 'video' && videoRef.current && videoRef.current.readyState >= 2) {
-          const vid = videoRef.current;
-          drawMediaCover(ctx, canvas.width, canvas.height, vid.videoWidth, vid.videoHeight, (x, y, w, h) => ctx.drawImage(vid, x, y, w, h));
-        }
-
-        ctx.shadowColor = 'rgba(0, 0, 0, 0.8)';
-        ctx.shadowBlur = 3;
-        drawGrid(ctx, canvas.width, canvas.height);
-        ctx.shadowColor = 'transparent';
-        ctx.shadowBlur = 0;
-
-        if (!isProcessing) {
-          const { verticalPosition: vp, primaryColor: pc, traceOpacity: to } = configRef.current;
-          const baselineY = canvas.height * (vp / 100);
-          ctx.globalAlpha = to;
-          ctx.beginPath();
-          ctx.moveTo(0, baselineY);
-          ctx.lineTo(canvas.width, baselineY);
-          ctx.shadowBlur = 4; ctx.shadowColor = 'rgba(0,0,0,0.8)';
-          ctx.lineWidth = 4; ctx.strokeStyle = 'rgba(0,0,0,0.6)'; ctx.stroke();
-          ctx.shadowBlur = 8; ctx.shadowColor = pc;
-          ctx.strokeStyle = pc; ctx.lineWidth = 2; ctx.stroke();
-          ctx.shadowBlur = 0; ctx.globalAlpha = 1.0;
-        }
-      }, [isProcessing, mediaType]);
-
-      useEffect(() => {
-        configRef.current = { visualStyle, primaryColor, secondaryColor, verticalPosition, amplitudeScale, traceOpacity };
-        if (!isProcessing) drawStaticPreview();
-      }, [visualStyle, primaryColor, secondaryColor, verticalPosition, amplitudeScale, traceOpacity, isProcessing, drawStaticPreview]);
-
-      useEffect(() => {
-        if (mediaType === 'video' && videoRef.current) videoRef.current.onloadeddata = drawStaticPreview;
-      }, [mediaType, mediaFile, drawStaticPreview]);
-
-      const handleMediaUpload = (e) => {
-        const file = e.target.files[0];
-        if (file) {
-          const url = URL.createObjectURL(file);
-          setMediaFile(url);
-          if (file.type.startsWith('video/')) { setMediaType('video'); setStatusText('VIDEO_TARGET_ACQUIRED'); }
-          else { setMediaType('image'); setStatusText('IMAGE_TARGET_ACQUIRED');
-            const img = new Image();
-            img.onload = () => { imageElementRef.current = img; drawStaticPreview(); };
-            img.src = url;
-          }
-          setOutputVideo(null);
-        }
-      };
-
-      const handleAudioUpload = (e) => {
-        const file = e.target.files[0];
-        if (file) { setAudioFile(URL.createObjectURL(file)); setStatusText('AUDIO_TARGET_ACQUIRED'); setOutputVideo(null); }
-      };
-
-      const renderFrame = () => {
-        if (!analyserRef.current || !canvasRef.current || !audioContextRef.current) return;
-        const canvas = canvasRef.current;
-        const ctx = canvas.getContext('2d');
-        const analyser = analyserRef.current;
-        const audioCtx = audioContextRef.current;
-        const bufferLength = analyser.frequencyBinCount;
-        const { visualStyle: vs, primaryColor: pc, secondaryColor: sc, verticalPosition: vp, amplitudeScale: as, traceOpacity: to } = configRef.current;
-        drawStaticPreview();
-        ctx.globalAlpha = to;
-
-        if (vs === 'spectrum') {
-          const dataArray = new Uint8Array(bufferLength);
-          analyser.getByteFrequencyData(dataArray);
-          const barWidth = canvas.width / bufferLength;
-          const segmentHeight = 6, gap = 2;
-          let x = 0;
-          ctx.shadowColor = 'rgba(0, 0, 0, 0.9)'; ctx.shadowBlur = 4; ctx.shadowOffsetY = 2;
-          for (let i = 0; i < bufferLength; i++) {
-            const value = dataArray[i];
-            if (value > peaksRef.current[i]) peaksRef.current[i] = value;
-            else peaksRef.current[i] = Math.max(0, peaksRef.current[i] - 2.5);
-            const maxDrawHeight = canvas.height * (0.8 * as);
-            const yOffset = canvas.height * (vp / 100);
-            const numSegments = Math.floor((value / 255) * (maxDrawHeight / (segmentHeight + gap)));
-            for (let j = 0; j < numSegments; j++) {
-              const y = yOffset - (j * (segmentHeight + gap)) - segmentHeight;
-              ctx.fillStyle = (value > 200 && j >= numSegments - 2) ? sc : pc;
-              ctx.fillRect(x, y, barWidth - 2, segmentHeight);
-            }
-            if (peaksRef.current[i] > 5) {
-              const peakNumSegments = Math.floor((peaksRef.current[i] / 255) * (maxDrawHeight / (segmentHeight + gap)));
-              const peakY = yOffset - (peakNumSegments * (segmentHeight + gap)) - segmentHeight - 4;
-              ctx.fillStyle = sc;
-              ctx.fillRect(x, peakY, barWidth - 2, 2);
-            }
-            x += barWidth;
-          }
-          ctx.shadowColor = 'transparent'; ctx.shadowBlur = 0; ctx.shadowOffsetY = 0;
-        } else if (vs === 'oscilloscope') {
-          const dataArray = new Uint8Array(bufferLength);
-          analyser.getByteTimeDomainData(dataArray);
-          const baselineY = canvas.height * (vp / 100);
-          ctx.shadowBlur = 2; ctx.shadowColor = 'rgba(0,0,0,0.8)';
-          ctx.strokeStyle = 'rgba(77, 227, 224, 0.4)'; ctx.lineWidth = 1;
-          ctx.beginPath();
-          ctx.moveTo(0, baselineY - (canvas.height * 0.15 * as)); ctx.lineTo(canvas.width, baselineY - (canvas.height * 0.15 * as));
-          ctx.moveTo(0, baselineY + (canvas.height * 0.15 * as)); ctx.lineTo(canvas.width, baselineY + (canvas.height * 0.15 * as));
-          ctx.stroke();
-          ctx.beginPath();
-          const sliceWidth = canvas.width / bufferLength;
-          let x = 0;
-          for (let i = 0; i < bufferLength; i++) {
-            const v = ((dataArray[i] / 128.0) - 1.0) * as;
-            const y = baselineY + (v * (canvas.height / 3));
-            if (i === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
-            x += sliceWidth;
-          }
-          ctx.lineTo(canvas.width, baselineY);
-          ctx.shadowBlur = 4; ctx.shadowColor = 'rgba(0, 0, 0, 0.9)';
-          ctx.lineWidth = 4; ctx.strokeStyle = 'rgba(0, 0, 0, 0.7)'; ctx.stroke();
-          ctx.shadowBlur = 8; ctx.shadowColor = pc;
-          ctx.lineWidth = 2; ctx.strokeStyle = pc; ctx.stroke();
-          ctx.shadowBlur = 0;
-        }
-        ctx.globalAlpha = 1.0;
-        const elapsed = audioCtx.currentTime - renderStartTimeRef.current;
-        if (mediaDurationRef.current > 0) {
-          const currentProgress = Math.min(100, Math.floor((elapsed / mediaDurationRef.current) * 100));
-          setProgress(currentProgress);
-        }
-        if (isProcessing) {
-          animationFrameRef.current = requestAnimationFrame(renderFrame);
-        }
-      };
-
-      const startProcessing = async () => {
-        if (!mediaFile) { alert("Missing base plate. A Video or Image is required."); return; }
-        try {
-          setIsProcessing(true); setProgress(0); recordedChunksRef.current = [];
-          setStatusText('DECODING_AUDIO_BUFFER...');
-          if (!audioContextRef.current) audioContextRef.current = new (window.AudioContext || window.webkitAudioContext)();
-          const audioCtx = audioContextRef.current;
-          if (audioCtx.state === 'suspended') await audioCtx.resume();
-
-          const sourceUrl = audioFile || mediaFile;
-          const response = await fetch(sourceUrl);
-          const arrayBuffer = await response.arrayBuffer();
-          const decodedAudio = await audioCtx.decodeAudioData(arrayBuffer);
-          mediaDurationRef.current = decodedAudio.duration;
-
-          analyserRef.current = audioCtx.createAnalyser();
-          analyserRef.current.fftSize = visualStyle === 'spectrum' ? 256 : 1024;
-          bufferSourceRef.current = audioCtx.createBufferSource();
-          bufferSourceRef.current.buffer = decodedAudio;
-          const destination = audioCtx.createMediaStreamDestination();
-
-          bufferSourceRef.current.connect(analyserRef.current);
-          analyserRef.current.connect(destination);
-          analyserRef.current.connect(audioCtx.destination);
-
-          setStatusText('INITIALIZING_MUXER...');
-          const canvas = canvasRef.current;
-          const canvasStream = canvas.captureStream(30);
-          const tracks = [...canvasStream.getVideoTracks(), ...destination.stream.getAudioTracks()];
-          const combinedStream = new MediaStream(tracks);
-
-          let options = { mimeType: 'video/webm;codecs=vp9,opus' };
-          if (!MediaRecorder.isTypeSupported(options.mimeType)) options = { mimeType: 'video/webm;codecs=vp8,opus' };
-          if (!MediaRecorder.isTypeSupported(options.mimeType)) options = { mimeType: 'video/webm' };
-          if (!MediaRecorder.isTypeSupported(options.mimeType)) options = { mimeType: 'video/mp4' };
-
-          mediaRecorderRef.current = new MediaRecorder(combinedStream, options);
-          mediaRecorderRef.current.ondataavailable = (e) => { if (e.data.size > 0) recordedChunksRef.current.push(e.data); };
-          mediaRecorderRef.current.onstop = () => {
-            const mimeType = mediaRecorderRef.current.mimeType || 'video/webm';
-            const ext = mimeType.includes('mp4') ? 'mp4' : 'webm';
-            const blob = new Blob(recordedChunksRef.current, { type: mimeType });
-            setOutputVideo({ url: URL.createObjectURL(blob), filename: `SENTINEL_OUTPUT.${ext}` });
-            setIsProcessing(false); setStatusText('RENDER_COMPLETE // EXPORT_READY');
-            cancelAnimationFrame(animationFrameRef.current);
-          };
-
-          bufferSourceRef.current.onended = () => {
-            if (mediaRecorderRef.current && mediaRecorderRef.current.state === 'recording') mediaRecorderRef.current.stop();
-            if (videoRef.current) videoRef.current.pause();
-          };
-
-          setStatusText('RECORDING_ACTIVE_REAL_TIME...');
-          mediaRecorderRef.current.start();
-          if (mediaType === 'video' && videoRef.current) {
-            videoRef.current.currentTime = 0;
-            videoRef.current.muted = true;
-            videoRef.current.play();
-          }
-          renderStartTimeRef.current = audioCtx.currentTime;
-          bufferSourceRef.current.start(0);
-          renderFrame();
-        } catch (error) {
-          console.error("[SENTINEL_ERROR]", error);
-          setIsProcessing(false); setStatusText('ERROR // INITIALIZATION_FAILED');
-          alert(`Render Failed: ${error.message}. Ensure the file contains a valid audio track.`);
-        }
-      };
-
-      const abortProcessing = () => {
-        if (mediaRecorderRef.current && mediaRecorderRef.current.state === 'recording') mediaRecorderRef.current.stop();
-        if (bufferSourceRef.current) { try { bufferSourceRef.current.stop(); } catch(e) {} }
-        if (videoRef.current) videoRef.current.pause();
-        setStatusText('RENDER_ABORTED // INCOMPLETE_ASSET_GENERATED');
-      };
-
-      return (
-        <div className="min-h-screen bg-[#050608] text-[#E4E8EC] p-4 md:p-8 selection:bg-[#4DE3E0] selection:text-[#050608]">
-          <header className="mb-8 border-b border-[#1B4A4C] pb-4 flex justify-between items-end">
-            <div>
-              <div className="text-[#4DE3E0] text-xs uppercase tracking-widest mb-1">TARGET: MEDIA_OVERLAY</div>
-              <h1 className="text-3xl font-bold uppercase text-[#E4E8EC]">FILE: SIGNAL_PROCESSOR</h1>
-            </div>
-            <div className="text-right text-xs text-[#1B4A4C] hidden md:block">
-              <div>CLASSIFICATION: UNRESTRICTED</div>
-              <div>thesentinel.network</div>
-            </div>
-          </header>
-
-          <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
-            <div className="lg:col-span-4 space-y-6">
-              <div className="bg-[#0A0D10] border border-[#1B4A4C] p-4 relative">
-                <CornerBrackets />
-                <div className="text-[#4DE3E0] text-xs mb-2 flex items-center justify-between">
-                  <span>[SYSTEM_STATUS]</span>
-                  <Activity size={14} className={isProcessing ? "text-[#FF6A1A] animate-pulse" : ""} />
-                </div>
-                <div className={`font-bold tabular-nums text-xs sm:text-sm ${isProcessing ? 'text-[#FF6A1A]' : 'text-[#E4E8EC]'}`}>{statusText}</div>
-                {isProcessing && (
-                  <div className="mt-4">
-                    <div className="flex justify-between text-xs mb-1 text-[#FF6A1A]">
-                      <span className="animate-pulse">DO NOT MINIMIZE TAB OR NAVIGATE AWAY</span>
-                      <span className="tabular-nums">{progress}%</span>
-                    </div>
-                    <div className="h-1 bg-[#050608] border border-[#1B4A4C]"><div className="h-full bg-[#FF6A1A] transition-all duration-100" style={{ width: `${progress}%` }}></div></div>
-                  </div>
-                )}
-              </div>
-
-              <div className={`bg-[#0A0D10] border border-[#1B4A4C] p-4 relative space-y-4 transition-opacity ${isProcessing ? 'opacity-50 pointer-events-none' : ''}`}>
-                <div className="text-[#4DE3E0] text-xs mb-4 border-b border-[#1B4A4C] pb-2 flex items-center gap-2"><Upload size={14} /> [ASSET_INGESTION]</div>
-                <div>
-                  <label className="block text-xs mb-2 text-[#E4E8EC]">01 // BASE PLATE (VIDEO OR IMAGE)</label>
-                  <div className="relative border border-[#1B4A4C] hover:border-[#4DE3E0] transition-colors bg-[#050608] p-3 flex items-center justify-between cursor-pointer group">
-                    <span className="text-xs truncate max-w-[200px] opacity-70 group-hover:opacity-100">{mediaFile && mediaType ? `PLATE_LOADED [${mediaType.toUpperCase()}]` : "SELECT_FILE..."}</span>
-                    <Upload size={14} className="text-[#4DE3E0]" />
-                    <input type="file" accept="image/*,video/*" onChange={handleMediaUpload} className="absolute inset-0 opacity-0 cursor-pointer" />
-                  </div>
-                  <p className="text-[10px] text-[#1B4A4C] mt-1">If video, native audio will be extracted and decoded automatically.</p>
-                </div>
-                <div>
-                  <label className="block text-xs mb-2 text-[#E4E8EC]">02 // DEDICATED AUDIO TRACK (OPTIONAL)</label>
-                  <div className="relative border border-[#1B4A4C] hover:border-[#4DE3E0] transition-colors bg-[#050608] p-3 flex items-center justify-between cursor-pointer group">
-                    <span className="text-xs truncate max-w-[200px] opacity-70 group-hover:opacity-100">{audioFile ? "AUDIO_LOADED.DAT" : "OVERRIDE_AUDIO..."}</span>
-                    <Upload size={14} className="text-[#4DE3E0]" />
-                    <input type="file" accept="audio/*" onChange={handleAudioUpload} className="absolute inset-0 opacity-0 cursor-pointer" />
-                  </div>
-                  <p className="text-[10px] text-[#1B4A4C] mt-1">Overrides base plate audio if provided.</p>
-                </div>
-                <video ref={videoRef} src={mediaType === 'video' ? mediaFile : null} className="hidden" playsInline />
-              </div>
-
-              <div className="bg-[#0A0D10] border border-[#1B4A4C] p-4 relative space-y-6">
-                <div className="text-[#4DE3E0] text-xs mb-4 border-b border-[#1B4A4C] pb-2 flex items-center gap-2"><Sliders size={14} /> [VISUAL_TELEMETRY]</div>
-                <div>
-                  <label className="block text-xs mb-2 text-[#E4E8EC]">// OVERLAY_ARCHITECTURE</label>
-                  <div className="grid grid-cols-1 gap-2">
-                    <BrutalistButton variant="ghost" active={visualStyle === 'spectrum'} onClick={() => { setVisualStyle('spectrum'); setVerticalPosition(100); }} className="justify-start">[ALPHA] DATA-DENSE BARS</BrutalistButton>
-                    <BrutalistButton variant="ghost" active={visualStyle === 'oscilloscope'} onClick={() => { setVisualStyle('oscilloscope'); setVerticalPosition(50); }} className="justify-start">[BETA] CLINICAL OSCILLOSCOPE</BrutalistButton>
-                  </div>
-                </div>
-                <div>
-                  <label className="block text-xs mb-3 text-[#E4E8EC] border-t border-[#1B4A4C] pt-4 mt-4">// OVERLAY_GEOMETRY</label>
-                  <div className="space-y-3">
-                    <div>
-                      <div className="flex justify-between text-[10px] text-[#E4E8EC] mb-1"><span>Y-AXIS_OFFSET</span><span className="tabular-nums">{verticalPosition}%</span></div>
-                      <input type="range" min="10" max="100" step="1" value={verticalPosition} onChange={(e) => setVerticalPosition(parseFloat(e.target.value))} className="w-full h-1 bg-[#1B4A4C] appearance-none cursor-pointer" />
-                    </div>
-                    <div>
-                      <div className="flex justify-between text-[10px] text-[#E4E8EC] mb-1"><span>AMPLITUDE_SCALE</span><span className="tabular-nums">{amplitudeScale.toFixed(1)}x</span></div>
-                      <input type="range" min="0.1" max="3.0" step="0.1" value={amplitudeScale} onChange={(e) => setAmplitudeScale(parseFloat(e.target.value))} className="w-full h-1 bg-[#1B4A4C] appearance-none cursor-pointer" />
-                    </div>
-                    <div>
-                      <div className="flex justify-between text-[10px] text-[#E4E8EC] mb-1"><span>TRACE_OPACITY</span><span className="tabular-nums">{(traceOpacity * 100).toFixed(0)}%</span></div>
-                      <input type="range" min="0.1" max="1.0" step="0.05" value={traceOpacity} onChange={(e) => setTraceOpacity(parseFloat(e.target.value))} className="w-full h-1 bg-[#1B4A4C] appearance-none cursor-pointer" />
-                    </div>
-                  </div>
-                </div>
-                <div>
-                  <label className="block text-xs mb-2 text-[#E4E8EC] flex items-center gap-2 border-t border-[#1B4A4C] pt-4 mt-4"><Palette size={12} /> // SIGNAL_COLOR_MATRIX</label>
-                  <div className="space-y-4">
-                    <div>
-                      <div className="text-[10px] text-[#4DE3E0] mb-1">PRIMARY WAVEFORM</div>
-                      <div className="flex gap-2 items-center">
-                        {SWATCHES.map(swatch => (
-                          <button key={swatch.label} onClick={() => setPrimaryColor(swatch.value)} title={swatch.label} className={`w-6 h-6 border ${primaryColor === swatch.value ? 'border-white scale-110' : 'border-[#1B4A4C]'} transition-transform`} style={{ backgroundColor: swatch.value }} />
-                        ))}
-                        <div className="w-[1px] h-6 bg-[#1B4A4C] mx-1"></div>
-                        <input type="color" value={primaryColor} onChange={(e) => setPrimaryColor(e.target.value)} className="w-6 h-6 border border-[#1B4A4C]" title="CUSTOM_HEX" />
-                      </div>
-                    </div>
-                    <div>
-                      <div className="text-[10px] text-[#FF6A1A] mb-1">PEAK / CRITICAL STATE</div>
-                      <div className="flex gap-2 items-center">
-                        {SWATCHES.map(swatch => (
-                          <button key={swatch.label} onClick={() => setSecondaryColor(swatch.value)} title={swatch.label} className={`w-6 h-6 border ${secondaryColor === swatch.value ? 'border-white scale-110' : 'border-[#1B4A4C]'} transition-transform`} style={{ backgroundColor: swatch.value }} />
-                        ))}
-                        <div className="w-[1px] h-6 bg-[#1B4A4C] mx-1"></div>
-                        <input type="color" value={secondaryColor} onChange={(e) => setSecondaryColor(e.target.value)} className="w-6 h-6 border border-[#1B4A4C]" title="CUSTOM_HEX" />
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              </div>
-
-              <div className="flex gap-4">
-                {!isProcessing ? (
-                  <BrutalistButton onClick={startProcessing} disabled={!mediaFile} className="w-full" variant={mediaFile ? 'teal' : 'ghost'}><Play size={16} /> INITIALIZE RENDER</BrutalistButton>
-                ) : (
-                  <BrutalistButton onClick={abortProcessing} className="w-full flex-col h-auto py-3 gap-1 border-dashed" variant="orange">
-                    <div className="flex items-center gap-2"><AlertTriangle size={16} /><span>ABORT (INCOMPLETE RENDER)</span></div>
-                    <span className="text-[10px] opacity-80">Stop and save current progress only</span>
-                  </BrutalistButton>
-                )}
-              </div>
-            </div>
-
-            <div className="lg:col-span-8 space-y-6">
-              <div className="bg-[#0A0D10] border border-[#1B4A4C] p-2 relative flex flex-col items-center justify-center min-h-[400px]">
-                <CornerBrackets />
-                <div className="absolute top-4 left-4 text-[#4DE3E0] text-[10px] flex gap-4 opacity-50 z-10 pointer-events-none">
-                  <span>RES: 1280x720</span><span>FRQ_LOCK: ACTIVE</span><span>COLOR_MODE: HEX_OVERRIDE</span>
-                </div>
-                <Crosshair className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 text-[#1B4A4C] opacity-20 w-32 h-32 pointer-events-none" />
-                <canvas ref={canvasRef} width={1280} height={720} className="w-full max-w-full h-auto border border-[#1B4A4C] bg-[#050608] aspect-video" />
-              </div>
-              {outputVideo && (
-                <div className="bg-[#0A0D10] border border-[#FF6A1A] p-4 relative">
-                  <div className="absolute top-0 left-0 w-full h-1 bg-[#FF6A1A]"></div>
-                  <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-                    <div>
-                      <div className="text-[#FF6A1A] text-xs font-bold mb-1">EXPORT // SUCCESS</div>
-                      <div className="text-xs text-[#E4E8EC]">File: {outputVideo.filename} // Native Upload Compatible</div>
-                    </div>
-                    <a href={outputVideo.url} download={outputVideo.filename} className="flex items-center gap-2 bg-[#FF6A1A] text-[#050608] px-4 py-2 text-sm font-bold uppercase hover:bg-[#E4E8EC] transition-colors whitespace-nowrap"><Download size={16} /> ACQUIRE ASSET</a>
-                  </div>
-                </div>
-              )}
-            </div>
-          </div>
-
-          <footer className="mt-12 text-right text-[#1B4A4C] text-xs border-t border-[#1B4A4C] pt-4">
-            EOF // THE_SENTINEL_NETWORK // {new Date().getFullYear()}
-          </footer>
+      <div class="grp" data-group="color">
+        <div class="colors">
+          <div class="c"><span>Primary</span><input type="color" id="cPrimary" value="#4DE3E0"></div>
+          <div class="c"><span>Accent</span><input type="color" id="cSecondary" value="#FF6A1A"></div>
+          <div class="c"><span>BG &middot; audio</span><input type="color" id="cBg" value="#050608"></div>
         </div>
-      );
+        <div class="themes" id="presets"></div>
+      </div>
+
+      <div class="grp" data-group="layout">
+        <div class="field"><div class="flabel"><span>Position X</span><span class="val" id="vPosX">50%</span></div><input type="range" id="posX" min="0" max="100" value="50"></div>
+        <div class="field"><div class="flabel"><span>Position Y</span><span class="val" id="vPosY">90%</span></div><input type="range" id="posY" min="0" max="100" value="90"></div>
+        <div class="field"><div class="flabel"><span>Size</span><span class="val" id="vScale">0.80&times;</span></div><input type="range" id="scale" min="20" max="200" value="80"></div>
+        <div class="field"><div class="flabel"><span>Output frame</span></div>
+          <div class="seg" id="aspectSeg"><button data-a="match" class="active">Match</button><button data-a="9:16">9:16</button><button data-a="1:1">1:1</button><button data-a="16:9">16:9</button></div></div>
+        <div class="field"><div class="flabel"><span>Title / handle</span></div><input type="text" class="txtin" id="titleIn" placeholder="e.g. THE NARROW BAND" maxlength="60"></div>
+        <div class="field"><div class="flabel"><span>Label position</span></div><select class="selin" id="titlePos"><option value="top">Top</option><option value="middle">Middle</option><option value="bottom" selected>Bottom</option></select></div>
+        <div class="togglerow"><input type="checkbox" id="wmToggle"><label for="wmToggle">thesentinel.network watermark</label></div>
+      </div>
+
+      <div class="grp" data-group="audio">
+        <div class="field"><div class="flabel"><span>Sensitivity</span><span class="val" id="vSens">1.30&times;</span></div><input type="range" id="sens" min="40" max="300" value="130"></div>
+        <div class="field"><div class="flabel"><span>Smoothing</span><span class="val" id="vSmooth">0.80</span></div><input type="range" id="smooth" min="0" max="95" value="80"></div>
+        <div class="field"><div class="flabel"><span>Bars / detail</span><span class="val" id="vBars">64</span></div><input type="range" id="bars" min="16" max="160" value="64"></div>
+      </div>
+
+      <div class="grp" data-group="export">
+        <button class="btn primary" id="exportBtn" disabled>Render &amp; download</button>
+        <button class="btn stop" id="stopBtn" style="display:none;margin-top:8px">Stop rendering</button>
+        <div class="progress" id="prog"><i></i></div>
+        <div class="hint" id="exportHint">Burns the overlay onto the video with its sound. <b>Renders in real time</b> (a 60s clip &asymp; 60s). Output: <b id="fmtNote">checking&hellip;</b></div>
+      </div>
+    </div>
+  </aside>
+</div>
+
+<div id="toast"></div>
+
+<script>
+"use strict";
+(function(){
+  // ---------- CONFIG / STATE ----------
+  const FRAMES = { "1:1":[1080,1080], "9:16":[1080,1920], "16:9":[1920,1080] };
+  const state = {
+    ready:false, mediaType:"none", duration:0, exporting:false,
+    vis:"bars", primary:"#4DE3E0", secondary:"#FF6A1A", bg:"#050608", bgImage:null,
+    posX:0.5, posY:0.9, scale:0.8, sens:1.3, bars:64, smooth:0.8,
+    aspect:"match", title:"", titlePos:"bottom", watermark:false
+  };
+
+  const $ = id => document.getElementById(id);
+  const wrap = $("canvasWrap");
+  const overlay = $("overlay"), octx = overlay.getContext("2d");   // alpha:true (transparent overlay)
+  const video = $("video");
+  const dropzone = $("dropzone"), transport = $("transport");
+  const embedded = (function(){ try{ return window.self !== window.top; }catch(_){ return true; } })();
+  if(embedded){ const w=$("embedWarn"); if(w) w.classList.add("show"); }
+
+  let audioCtx, analyser, streamDest, freqArr, waveArr, graphReady=false;
+  let frameW=1080, frameH=1080;
+  // buffer-source transport (audio files)
+  let bufSrc=null, bufPlaying=false, bufStartedAt=0, bufOffset=0, bufStopReason="";
+  // video source node (created once)
+  let videoSourced=false, vSrc=null;
+  // export
+  let exportCanvas=null, exportCtx=null, exportRec=null, exportCancelled=false, endResolver=null, videoEndHandler=null;
+  let seeking=false;
+
+  // ---------- HELPERS ----------
+  const clamp01 = v => v<0?0:v>1?1:v;
+  function toast(msg,isErr){ const t=$("toast"); t.textContent=msg; t.className="show"+(isErr?" err":""); clearTimeout(t._t); t._t=setTimeout(()=>t.className="",2800); }
+  function fmtTime(s){ s=Math.max(0,s||0); const m=Math.floor(s/60), r=Math.floor(s%60); return m+":"+(r<10?"0":"")+r; }
+  function roundRect(c,x,y,w,h,r){ r=Math.min(r,w/2,Math.abs(h)/2); c.beginPath(); c.moveTo(x+r,y); c.arcTo(x+w,y,x+w,y+h,r); c.arcTo(x+w,y+h,x,y+h,r); c.arcTo(x,y+h,x,y,r); c.arcTo(x,y,x+w,y,r); c.closePath(); }
+  function vgrad(c,y0,y1){ const g=c.createLinearGradient(0,y0,0,y1); g.addColorStop(0,state.primary); g.addColorStop(1,state.secondary); return g; }
+  function getBands(freq,n){
+    const out=new Float32Array(n), len=freq.length;
+    for(let b=0;b<n;b++){ let lo=Math.floor(Math.pow(len,b/n)), hi=Math.floor(Math.pow(len,(b+1)/n)); if(hi<=lo) hi=lo+1; let sum=0,c=0;
+      for(let i=lo;i<Math.min(hi,len);i++){ sum+=freq[i]; c++; } out[b]=(c?sum/c:0)/255; }
+    return out;
+  }
+  function drawCover(c,img,W,H){ const ir=img.width/img.height, cr=W/H; let dw,dh; if(ir>cr){ dh=H; dw=H*ir; } else { dw=W; dh=W/ir; } c.drawImage(img,(W-dw)/2,(H-dh)/2,dw,dh); }
+  function drawVideoCover(c,v,W,H){
+    const vw=v.videoWidth, vh=v.videoHeight; if(!vw||!vh) return;
+    const sAR=vw/vh, dAR=W/H; let sx,sy,sw,sh;
+    if(sAR>dAR){ sh=vh; sw=vh*dAR; sx=(vw-sw)/2; sy=0; } else { sw=vw; sh=vw/dAR; sx=0; sy=(vh-sh)/2; }
+    c.drawImage(v, sx,sy,sw,sh, 0,0,W,H);
+  }
+
+  // ---------- VISUALIZERS (overlay graphics) ----------
+  const VIS = {
+    bars:{ label:"Bars", icon:'<rect x="2" y="10" width="3" height="10"/><rect x="7" y="4" width="3" height="16"/><rect x="12" y="13" width="3" height="7"/><rect x="17" y="7" width="3" height="13"/><rect x="22" y="2" width="3" height="18"/>',
+      draw(c,W,H,d){ const bands=getBands(d.freq,state.bars), cx=W*state.posX, baseY=H*state.posY;
+        const total=W*0.82*state.scale, bw=total/bands.length, maxH=H*0.42*state.scale, sx=cx-total/2;
+        c.fillStyle=vgrad(c,baseY-maxH,baseY);
+        for(let i=0;i<bands.length;i++){ const h=Math.max(2,clamp01(bands[i]*state.sens)*maxH); roundRect(c,sx+i*bw+bw*0.12,baseY-h,bw*0.76,h,bw*0.3); c.fill(); } }},
+    mirror:{ label:"Mirror", icon:'<rect x="2" y="8" width="3" height="8"/><rect x="7" y="5" width="3" height="14"/><rect x="12" y="9" width="3" height="6"/><rect x="17" y="4" width="3" height="16"/><rect x="22" y="7" width="3" height="10"/>',
+      draw(c,W,H,d){ const bands=getBands(d.freq,state.bars), cx=W*state.posX, cy=H*state.posY;
+        const total=W*0.82*state.scale, bw=total/bands.length, maxH=H*0.22*state.scale, sx=cx-total/2;
+        for(let i=0;i<bands.length;i++){ const h=Math.max(2,clamp01(bands[i]*state.sens)*maxH); c.fillStyle=vgrad(c,cy-h,cy+h); roundRect(c,sx+i*bw+bw*0.12,cy-h,bw*0.76,h*2,bw*0.3); c.fill(); } }},
+    radial:{ label:"Radial", icon:'<circle cx="13" cy="11" r="3" fill="none" stroke="currentColor"/><line x1="13" y1="3" x2="13" y2="6"/><line x1="13" y1="16" x2="13" y2="19"/><line x1="5" y1="11" x2="8" y2="11"/><line x1="18" y1="11" x2="21" y2="11"/><line x1="7" y1="5" x2="9" y2="7"/><line x1="17" y1="5" x2="19" y2="3"/>',
+      draw(c,W,H,d){ const bands=getBands(d.freq,state.bars), cx=W*state.posX, cy=H*state.posY;
+        const inner=Math.min(W,H)*0.13*state.scale, maxLen=Math.min(W,H)*0.22*state.scale;
+        c.save(); c.translate(cx,cy); c.lineCap="round"; const N=bands.length;
+        for(let i=0;i<N;i++){ const a=(i/N)*Math.PI*2 - Math.PI/2; const len=inner+Math.max(2,clamp01(bands[i]*state.sens)*maxLen);
+          c.strokeStyle=i%2?state.secondary:state.primary; c.lineWidth=Math.max(2,(Math.min(W,H)*0.012*state.scale));
+          c.beginPath(); c.moveTo(Math.cos(a)*inner,Math.sin(a)*inner); c.lineTo(Math.cos(a)*len,Math.sin(a)*len); c.stroke(); }
+        c.beginPath(); c.arc(0,0,inner*0.82,0,Math.PI*2); c.strokeStyle=state.primary; c.globalAlpha=.5; c.lineWidth=2; c.stroke(); c.restore(); }},
+    wave:{ label:"Wave", icon:'<path d="M2 11 Q5 3 8 11 T14 11 T20 11 T26 11" fill="none" stroke="currentColor" stroke-width="2"/>',
+      draw(c,W,H,d){ const cx=W*state.posX, cy=H*state.posY, amp=H*0.2*state.scale, w=W*0.86*state.scale, sx=cx-w/2; const N=d.wave.length;
+        c.lineWidth=Math.max(2,W*0.004*state.scale); c.strokeStyle=state.primary; c.lineCap="round"; c.lineJoin="round"; c.beginPath();
+        for(let i=0;i<N;i++){ const x=sx+(i/(N-1))*w, v=(d.wave[i]-128)/128; const y=cy+v*amp*state.sens; i?c.lineTo(x,y):c.moveTo(x,y); } c.stroke(); }},
+    orb:{ label:"Orb", icon:'<circle cx="13" cy="11" r="6" fill="none" stroke="currentColor" stroke-width="2"/><circle cx="13" cy="11" r="2" fill="currentColor"/>',
+      draw(c,W,H,d){ const bands=getBands(d.freq,48); let avg=0; for(let i=0;i<bands.length;i++) avg+=bands[i]; avg/=bands.length; avg=clamp01(avg*state.sens*1.4);
+        const cx=W*state.posX, cy=H*state.posY, base=Math.min(W,H)*0.14*state.scale, r=base*(1+avg*0.55);
+        const g=c.createRadialGradient(cx,cy,r*0.2,cx,cy,r*1.9); g.addColorStop(0,state.primary); g.addColorStop(.55,state.secondary+"cc"); g.addColorStop(1,state.bg+"00");
+        c.save(); c.globalCompositeOperation="lighter"; c.fillStyle=g; c.beginPath(); c.arc(cx,cy,r*1.9,0,Math.PI*2); c.fill(); c.restore();
+        const N=72; c.strokeStyle=state.primary; c.lineWidth=Math.max(1.5,Math.min(W,H)*0.004*state.scale); c.lineCap="round";
+        for(let i=0;i<N;i++){ const a=(i/N)*Math.PI*2; const b=clamp01(bands[i%bands.length]*state.sens); const l=r+b*base*0.9;
+          c.beginPath(); c.moveTo(cx+Math.cos(a)*r,cy+Math.sin(a)*r); c.lineTo(cx+Math.cos(a)*l,cy+Math.sin(a)*l); c.stroke(); }
+        c.fillStyle=state.bg; c.beginPath(); c.arc(cx,cy,r*0.78,0,Math.PI*2); c.fill();
+        c.strokeStyle=state.primary; c.lineWidth=2; c.globalAlpha=.85; c.stroke(); c.globalAlpha=1; }}
+  };
+
+  // ---------- SCENE DRAW ----------
+  function drawScene(c,W,H,paintBG){
+    if(paintBG){
+      if(state.mediaType==="video" && video.readyState>=2 && video.videoWidth){ c.fillStyle="#000"; c.fillRect(0,0,W,H); drawVideoCover(c,video,W,H); }
+      else { c.fillStyle=state.bg; c.fillRect(0,0,W,H); if(state.bgImage) drawCover(c,state.bgImage,W,H); }
+    } else { c.clearRect(0,0,W,H); }
+    const data={ freq:freqArr||new Uint8Array(1024), wave:waveArr||new Uint8Array(2048).fill(128) };
+    (VIS[state.vis]||VIS.bars).draw(c,W,H,data);
+    if(state.title){
+      c.save(); const fs=Math.round(H*0.05); c.font="700 "+fs+'px "Space Grotesk", system-ui, sans-serif';
+      c.textAlign="center"; c.textBaseline="middle"; c.fillStyle=state.primary;
+      const ty = state.titlePos==="top"?H*0.10:state.titlePos==="middle"?H*0.5:H*0.92;
+      c.shadowColor="rgba(0,0,0,.65)"; c.shadowBlur=fs*0.35; c.fillText(state.title.toUpperCase(), W*0.5, ty); c.restore();
+    }
+    if(state.watermark){
+      c.save(); const fs=Math.round(H*0.022); c.font="500 "+fs+'px "JetBrains Mono", monospace'; c.textAlign="right"; c.textBaseline="bottom";
+      c.shadowColor="rgba(0,0,0,.6)"; c.shadowBlur=4; c.fillStyle="rgba(228,232,236,.6)"; c.fillText("thesentinel.network", W-W*0.035, H-H*0.03); c.restore();
+    }
+  }
+  function progFill(p){ const i=$("prog").firstElementChild; if(i) i.style.width=clamp01(p)*100+"%"; }
+
+  // ---------- MEDIA TRANSPORT (unified over video element + buffer source) ----------
+  function ensureGraph(){
+    if(graphReady) return;
+    audioCtx = new (window.AudioContext||window.webkitAudioContext)();
+    analyser = audioCtx.createAnalyser();
+    analyser.fftSize = 2048; analyser.smoothingTimeConstant = state.smooth;
+    freqArr = new Uint8Array(analyser.frequencyBinCount);
+    waveArr = new Uint8Array(analyser.fftSize);
+    analyser.connect(audioCtx.destination);
+    try{ streamDest = audioCtx.createMediaStreamDestination(); analyser.connect(streamDest); }catch(_){ streamDest=null; }
+    graphReady = true;
+  }
+  function decode(ab){
+    return new Promise((res,rej)=>{ let done=false; const ok=b=>{ if(!done){done=true;res(b);} }; const no=e=>{ if(!done){done=true;rej(e||new Error("decode failed"));} };
+      let p; try{ p=audioCtx.decodeAudioData(ab, ok, no); }catch(e){ no(e); return; } if(p && p.then) p.then(ok,no); });
+  }
+  function bufCurrentTime(){ if(!graphReady) return 0; return bufPlaying ? Math.min(state.duration, bufOffset + (audioCtx.currentTime - bufStartedAt)) : bufOffset; }
+  function startBuf(off){
+    bufSrc = audioCtx.createBufferSource(); bufSrc.buffer = state.audioBuffer; bufSrc.connect(analyser); bufSrc.onended = onBufEnded;
+    bufStartedAt = audioCtx.currentTime; bufOffset = off; bufPlaying = true;
+    try{ bufSrc.start(0, off); }catch(e){ bufPlaying=false; toast("Playback failed: "+(e.message||e),true); }
+  }
+  function pauseBuf(){ if(!bufPlaying) return; bufOffset = bufCurrentTime(); bufStopReason="manual"; try{ bufSrc.stop(); }catch(_){}; bufPlaying=false; }
+  function seekBuf(t){ if(bufPlaying){ bufStopReason="seek"; try{ bufSrc.stop(); }catch(_){}; startBuf(t); } else { bufOffset=t; } }
+  function onBufEnded(){ const r=bufStopReason; bufStopReason=""; if(r==="manual"||r==="seek") return; if(state.exporting) return;
+    bufPlaying=false; bufOffset=0; $("seek").value=0; $("tCur").textContent="0:00"; updatePlayIcon(); }
+
+  function mediaCurrentTime(){ return state.mediaType==="video" ? (video.currentTime||0) : bufCurrentTime(); }
+  function mediaIsPlaying(){ return state.mediaType==="video" ? (!video.paused && !video.ended) : bufPlaying; }
+  function mediaPlay(){ if(state.mediaType==="video"){ video.play().catch(e=>toast("Play blocked: "+(e.message||e),true)); } else { startBuf(bufCurrentTime()>=state.duration?0:bufOffset); } updatePlayIcon(); }
+  function mediaPause(){ if(state.mediaType==="video"){ video.pause(); } else { pauseBuf(); } updatePlayIcon(); }
+  function mediaSeek(t){ t=Math.max(0,Math.min(state.duration||0,t)); if(state.mediaType==="video"){ video.currentTime=t; } else { seekBuf(t); } }
+  function updatePlayIcon(){ const b=$("playBtn"); if(b) b.innerHTML = mediaIsPlaying() ? "&#9208;" : "&#9658;"; }
+
+  function setFrameSize(){
+    let fw,fh;
+    if(state.mediaType==="video"){
+      if(state.aspect==="match"){ fw=video.videoWidth||1280; fh=video.videoHeight||720; const m=Math.max(fw,fh); if(m>1920){ const s=1920/m; fw=Math.round(fw*s); fh=Math.round(fh*s); } }
+      else { const f=FRAMES[state.aspect]; fw=f[0]; fh=f[1]; }
+    } else { const f=FRAMES[state.aspect==="match"?"1:1":state.aspect]; fw=f[0]; fh=f[1]; }
+    frameW=fw; frameH=fh; overlay.width=fw; overlay.height=fh;
+    wrap.style.setProperty("--ar",(fw/fh).toFixed(5));
+  }
+  function showReady(){ wrap.classList.add("ready"); wrap.classList.toggle("video-mode", state.mediaType==="video"); dropzone.style.display="none"; transport.classList.remove("hidden"); $("exportBtn").disabled=false; }
+
+  function clearDropErr(){ const de=$("dropErr"); if(de) de.style.display="none"; }
+  function failLoad(msg){
+    state.mediaType="none"; state.ready=false; state.duration=0;
+    wrap.classList.remove("ready"); transport.classList.add("hidden"); dropzone.style.display="flex";
+    const de=$("dropErr"); if(de){ de.innerHTML=msg; de.style.display="block"; }
+    $("exportBtn").disabled=true; toast("Couldn't load that video \u2014 see the red note",true);
+  }
+  async function sniffCodec(file){
+    try{
+      const N=262144, dec=new TextDecoder("latin1");
+      const head=new Uint8Array(await file.slice(0,N).arrayBuffer());
+      let hay=dec.decode(head);
+      if(file.size>N*2){ const tail=new Uint8Array(await file.slice(file.size-N).arrayBuffer()); hay+=dec.decode(tail); }
+      if(/hvc1|hev1|hvcC/.test(hay)) return "H.265 / HEVC";
+      if(/av01/.test(hay)) return "AV1";
+      if(/vp09|vp08/.test(hay)) return "VP9";
+      if(/avc1|avc3|avcC/.test(hay)) return "H.264 / AVC";
+    }catch(_){}
+    return null;
+  }
+  async function loadVideo(file){
+    if(state.exporting) return;
+    ensureGraph(); try{ await audioCtx.resume(); }catch(_){}
+    if(state.mediaType==="audio" && bufPlaying){ bufStopReason="manual"; try{ bufSrc.stop(); }catch(_){}; bufPlaying=false; }
+    clearDropErr(); state.mediaType="video"; state.ready=false;
+    video.onloadedmetadata = ()=>{
+      state.duration = video.duration || 0;
+      if(!videoSourced){ try{ vSrc = audioCtx.createMediaElementSource(video); vSrc.connect(analyser); videoSourced=true; }catch(e){ console.warn("audio source:",e); } }
+      setFrameSize();
+      state.ready=true; $("tDur").textContent=fmtTime(state.duration); $("tCur").textContent="0:00"; $("seek").value=0;
+      showReady(); updatePlayIcon();
+      toast("Loaded "+file.name+" \u00b7 "+fmtTime(state.duration)+" \u00b7 press \u25B6");
+    };
+    video.onerror = async ()=>{
+      const err=video.error, code=err?err.code:0;
+      const guess=await sniffCodec(file);
+      let msg;
+      if(guess && /HEVC/.test(guess)){
+        msg="<b>"+guess+" detected.</b> Chrome &amp; Firefox cannot play HEVC \u2014 only Safari can. Re-encode to <b>H.264 MP4</b> and reload.<br>Locally: <code>ffmpeg -i in.mp4 -c:v libx264 -crf 20 -c:a aac out.mp4</code>";
+      } else if(guess && /H\.264|AV1|VP9/.test(guess)){
+        if(embedded) msg="<b>"+guess+"</b> is a standard, playable codec \u2014 the file is fine. The real issue: this page is running inside an <b>embedded frame</b> (the chat preview), which blocks video. <b>Download index.html and open it directly in Chrome</b>, or load it from your live URL.";
+        else msg="<b>"+guess+"</b> should play, but the browser refused it (media error "+code+"). The clip may use an unusual H.264 profile (10-bit / 4:2:2) or an audio codec the browser can't decode. Ask me to add in-browser conversion. Quick local fix: <code>ffmpeg -i in.mp4 -c:v libx264 -profile:v high -pix_fmt yuv420p -c:a aac out.mp4</code>";
+      } else if(code===4){
+        msg="<b>Unsupported video format / codec</b>"+(guess?(" \u2014 "+guess):"")+". Re-encode to <b>H.264 MP4</b>.";
+      } else if(code===3){
+        msg="<b>Decode failed</b> \u2014 the file may be corrupt or use an unsupported codec"+(guess?(": "+guess):"")+". Re-encode to H.264 MP4.";
+      } else if(code===2){
+        msg="<b>Network error</b> while loading the video.";
+      } else {
+        msg="Couldn't load that video"+(guess?(" ("+guess+")"):"")+" (media error "+code+").";
+      }
+      failLoad(msg);
+    };
+    video.src = URL.createObjectURL(file);
+    video.load();
+  }
+  async function loadAudio(file){
+    if(state.exporting) return;
+    try{
+      ensureGraph(); try{ await audioCtx.resume(); }catch(_){}
+      clearDropErr();
+      try{ video.pause(); video.removeAttribute("src"); video.load(); }catch(_){}
+      const ab = await file.arrayBuffer();
+      const decoded = await decode(ab.slice(0));
+      if(bufPlaying){ bufStopReason="manual"; try{ bufSrc.stop(); }catch(_){}; bufPlaying=false; }
+      state.audioBuffer = decoded; state.mediaType="audio"; state.duration = decoded.duration; state.ready=true; bufOffset=0;
+      setFrameSize();
+      $("tDur").textContent=fmtTime(state.duration); $("tCur").textContent="0:00"; $("seek").value=0;
+      showReady(); updatePlayIcon();
+      toast("Loaded "+file.name+" \u00b7 "+fmtTime(state.duration)+" \u00b7 audiogram mode");
+    }catch(e){ console.error(e); toast("Couldn't decode that file ("+(e.message||e)+").",true); }
+  }
+  function loadImage(file){ const img=new Image(); img.onload=()=>{ state.bgImage=img; toast(state.mediaType==="video"?"Background set (shows in audio mode)":"Background image set"); }; img.onerror=()=>toast("Bad image file",true); img.src=URL.createObjectURL(file); }
+
+  // ---------- RENDER LOOP ----------
+  function loop(){
+    if(graphReady && analyser){ analyser.getByteFrequencyData(freqArr); analyser.getByteTimeDomainData(waveArr); }
+    drawScene(octx, overlay.width, overlay.height, state.mediaType!=="video");   // video mode: transparent overlay; audio: paint bg
+    if(state.exporting && exportCtx){ drawScene(exportCtx, frameW, frameH, true); }
+    if(state.ready){
+      const cur=mediaCurrentTime();
+      $("tCur").textContent=fmtTime(cur);
+      if(!seeking) $("seek").value = state.duration?Math.round(cur/state.duration*1000):0;
+      if(state.exporting && state.duration) progFill(cur/state.duration);
+    }
+    requestAnimationFrame(loop);
+  }
+
+  // ---------- EXPORT ----------
+  function pickMime(){
+    const c=[ ["video/mp4;codecs=avc1.42E01E,mp4a.40.2","mp4","MP4 (H.264)"], ["video/mp4","mp4","MP4"],
+      ["video/webm;codecs=vp9,opus","webm","WebM (VP9)"], ["video/webm;codecs=vp8,opus","webm","WebM (VP8)"], ["video/webm","webm","WebM"] ];
+    for(const m of c){ try{ if(window.MediaRecorder && MediaRecorder.isTypeSupported(m[0])) return {type:m[0],ext:m[1],label:m[2]}; }catch(_){} }
+    return {type:"",ext:"webm",label:"WebM"};
+  }
+  function cleanupExport(){ exportRec=null; exportCanvas=null; exportCtx=null; if(videoEndHandler){ video.removeEventListener("ended",videoEndHandler); videoEndHandler=null; } endResolver=null; }
+  function setExporting(on){
+    state.exporting=on;
+    $("exportBtn").style.display=on?"none":"block";
+    $("stopBtn").style.display=on?"block":"none";
+    $("prog").className="progress"+(on?" on":""); if(!on) progFill(0);
+    document.querySelectorAll(".panels input,.panels select,.panels button:not(#stopBtn),.vischip").forEach(el=>{ el.disabled=on; });
+  }
+  async function exportVideo(){
+    if(!state.ready){ toast("Load media first",true); return; }
+    if(!window.MediaRecorder){ toast("This browser has no MediaRecorder support.",true); return; }
+    if(!streamDest){ toast("This browser can't capture audio for export.",true); return; }
+    const mime=pickMime(); try{ await audioCtx.resume(); }catch(_){}
+    exportCanvas=document.createElement("canvas"); exportCanvas.width=frameW; exportCanvas.height=frameH; exportCtx=exportCanvas.getContext("2d");
+    let stream; try{ stream=exportCanvas.captureStream(30); }catch(e){ toast("Canvas capture unsupported. Try Chrome / Edge.",true); cleanupExport(); return; }
+    const at=streamDest.stream.getAudioTracks()[0]; if(at) stream.addTrack(at);
+    let rec; try{ rec=new MediaRecorder(stream, mime.type?{mimeType:mime.type,videoBitsPerSecond:9000000}:{}); }catch(e){ toast("Recorder init failed: "+(e.message||e),true); cleanupExport(); return; }
+    exportRec=rec; const chunks=[]; rec.ondataavailable=e=>{ if(e.data&&e.data.size) chunks.push(e.data); };
+    const recStopped=new Promise(res=>{ rec.onstop=res; });
+    exportCancelled=false; setExporting(true);
+
+    let ended;
+    if(state.mediaType==="video"){
+      try{ video.pause(); video.currentTime=0; }catch(_){}
+      try{ await video.play(); }catch(e){ setExporting(false); cleanupExport(); toast("Couldn't start video for capture.",true); return; }
+      ended=new Promise(res=>{ endResolver=res; videoEndHandler=()=>{ if(endResolver){ const r=endResolver; endResolver=null; r(); } }; video.addEventListener("ended",videoEndHandler); });
+      rec.start(120);
+    } else {
+      if(bufPlaying){ bufStopReason="manual"; try{ bufSrc.stop(); }catch(_){}; bufPlaying=false; }
+      const exSrc=audioCtx.createBufferSource(); exSrc.buffer=state.audioBuffer; exSrc.connect(analyser);
+      ended=new Promise(res=>{ endResolver=res; exSrc.onended=()=>{ if(endResolver){ const r=endResolver; endResolver=null; r(); } }; });
+      bufSrc=exSrc; bufStartedAt=audioCtx.currentTime; bufOffset=0; bufPlaying=true;
+      rec.start(120);
+      try{ exSrc.start(0,0); }catch(e){ setExporting(false); cleanupExport(); toast("Couldn't start audio for capture.",true); return; }
     }
 
-    const root = ReactDOM.createRoot(document.getElementById('root'));
-    root.render(React.createElement(App));
-  </script>
+    await ended;
+    if(state.mediaType==="video"){ try{ video.pause(); }catch(_){} } else { bufPlaying=false; bufOffset=0; }
+    try{ rec.state!=="inactive" && rec.stop(); }catch(_){}
+    await recStopped;
+    const cancelled=exportCancelled; setExporting(false); updatePlayIcon(); $("seek").value=0; $("tCur").textContent="0:00"; cleanupExport();
+
+    if(cancelled){ toast("Render cancelled."); return; }
+    if(!chunks.length){ toast("Render produced no data.",true); return; }
+    const blob=new Blob(chunks,{type:mime.type||"video/webm"}); const url=URL.createObjectURL(blob);
+    const safe=(state.title||"sentinel-overlay").toLowerCase().replace(/[^a-z0-9]+/g,"-").replace(/(^-|-$)/g,"")||"sentinel-overlay";
+    const a=document.createElement("a"); a.href=url; a.download=safe+"."+mime.ext; document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(()=>URL.revokeObjectURL(url),5000);
+    toast("Exported "+mime.label+" \u2192 "+a.download);
+  }
+  function stopExport(){ exportCancelled=true; try{ if(state.mediaType==="video") video.pause(); else if(bufSrc) bufSrc.stop(); }catch(_){}; if(endResolver){ const r=endResolver; endResolver=null; r(); } }
+
+  // ---------- UI WIRING ----------
+  const vg=$("visGrid");
+  Object.keys(VIS).forEach(k=>{
+    const b=document.createElement("button"); b.className="vischip"+(k===state.vis?" active":""); b.dataset.k=k;
+    b.innerHTML='<svg viewBox="0 0 27 22" fill="currentColor" stroke="none">'+VIS[k].icon+'</svg><span>'+VIS[k].label+'</span>';
+    b.onclick=()=>{ state.vis=k; document.querySelectorAll(".vischip").forEach(x=>x.classList.toggle("active",x.dataset.k===k)); };
+    vg.appendChild(b);
+  });
+  // Named color themes. To add one, copy a line: { name:"...", p:"primary", s:"accent", bg:"background" }
+  const THEMES=[
+    { name:"Sentinel",       p:"#4DE3E0", s:"#FF6A1A", bg:"#050608" },
+    { name:"Tailspin",       p:"#EFB43E", s:"#C9842A", bg:"#15110C" },
+    { name:"Doom",           p:"#FF6A1A", s:"#FF3B3B", bg:"#0c0503" },
+    { name:"Daz",            p:"#57C2FF", s:"#D8E1EC", bg:"#0B1C40" },
+    { name:"DataPhenomenon", p:"#9B5CFF", s:"#2DF58C", bg:"#0A0612" },
+    { name:"X",              p:"#FFFFFF", s:"#1D9BF0", bg:"#000000" },
+    { name:"Mono",           p:"#E4E8EC", s:"#8A949A", bg:"#0a0a0c" },
+    { name:"Mint",           p:"#7CFFB2", s:"#1B4A4C", bg:"#03100c" }
+  ];
+  const ps=$("presets");
+  THEMES.forEach(t=>{
+    const b=document.createElement("button"); b.type="button";
+    b.className="themechip"+(t.p.toLowerCase()===state.primary.toLowerCase()?" active":"");
+    b.innerHTML='<span class="dot" style="background:linear-gradient(135deg,'+t.p+','+t.s+')"></span><span class="tname">'+t.name+'</span>';
+    b.onclick=()=>{ state.primary=t.p; state.secondary=t.s; state.bg=t.bg;
+      $("cPrimary").value=t.p; $("cSecondary").value=t.s; $("cBg").value=t.bg;
+      document.querySelectorAll(".themechip").forEach(x=>x.classList.toggle("active",x===b)); };
+    ps.appendChild(b);
+  });
+
+  $("cPrimary").oninput=e=>state.primary=e.target.value;
+  $("cSecondary").oninput=e=>state.secondary=e.target.value;
+  $("cBg").oninput=e=>state.bg=e.target.value;
+
+  const bind=(id,key,fn,outId,fmt)=>{ const el=$(id); el.oninput=()=>{ state[key]=fn(+el.value); if(outId) $(outId).innerHTML=fmt(state[key]); if(key==="smooth"&&analyser) analyser.smoothingTimeConstant=state.smooth; }; };
+  bind("posX","posX",v=>v/100,"vPosX",v=>Math.round(v*100)+"%");
+  bind("posY","posY",v=>v/100,"vPosY",v=>Math.round(v*100)+"%");
+  bind("scale","scale",v=>v/100,"vScale",v=>v.toFixed(2)+"\u00d7");
+  bind("sens","sens",v=>v/100,"vSens",v=>v.toFixed(2)+"\u00d7");
+  bind("bars","bars",v=>Math.round(v),"vBars",v=>String(v));
+  bind("smooth","smooth",v=>v/100,"vSmooth",v=>v.toFixed(2));
+
+  $("aspectSeg").addEventListener("click",e=>{ const b=e.target.closest("button"); if(!b||state.exporting) return;
+    state.aspect=b.dataset.a; document.querySelectorAll("#aspectSeg button").forEach(x=>x.classList.toggle("active",x===b)); if(state.ready) setFrameSize(); });
+
+  $("titleIn").oninput=e=>state.title=e.target.value;
+  $("titlePos").onchange=e=>state.titlePos=e.target.value;
+  $("wmToggle").onchange=e=>state.watermark=e.target.checked;
+
+  $("mediaInput").onchange=e=>{ const f=e.target.files[0]; if(!f) return; if(f.type.startsWith("video")) loadVideo(f); else if(f.type.startsWith("audio")) loadAudio(f); };
+  dropzone.onclick=()=>$("mediaInput").click();
+  $("newFileBtn").onclick=()=>{ if(!state.exporting) $("mediaInput").click(); };
+
+  ["dragenter","dragover"].forEach(ev=>document.addEventListener(ev,e=>{ e.preventDefault(); dropzone.classList.add("hot"); }));
+  ["dragleave","drop"].forEach(ev=>document.addEventListener(ev,e=>{ e.preventDefault(); if(ev!=="dragover") dropzone.classList.remove("hot"); }));
+  document.addEventListener("drop",e=>{ const f=e.dataTransfer&&e.dataTransfer.files&&e.dataTransfer.files[0]; if(!f) return;
+    if(f.type.startsWith("video")) loadVideo(f); else if(f.type.startsWith("audio")) loadAudio(f); else if(f.type.startsWith("image")) loadImage(f); else toast("Drop a video, audio, or image file",true); });
+
+  $("playBtn").onclick=async ()=>{ if(!state.ready||state.exporting) return; try{ await audioCtx.resume(); }catch(_){}; if(mediaIsPlaying()) mediaPause(); else mediaPlay(); };
+  video.addEventListener("play",updatePlayIcon);
+  video.addEventListener("pause",updatePlayIcon);
+  video.addEventListener("ended",()=>{ if(!state.exporting) updatePlayIcon(); });
+  $("seek").addEventListener("input",()=>{ seeking=true; });
+  $("seek").addEventListener("change",()=>{ seeking=false; if(state.exporting) return; if(state.ready&&state.duration) mediaSeek((+$("seek").value/1000)*state.duration); });
+
+  $("exportBtn").onclick=exportVideo;
+  $("stopBtn").onclick=stopExport;
+
+  (function(){ const m=pickMime(); $("fmtNote").textContent=m.label + (m.ext==="webm"?"  (re-encode to MP4 for X / TikTok)":""); })();
+
+
+  // --- tabs ---
+  document.querySelectorAll(".tab").forEach(function(t){ t.onclick=function(){
+    document.querySelectorAll(".tab").forEach(function(x){ x.classList.toggle("active", x===t); });
+    var id=t.dataset.tab;
+    document.querySelectorAll(".grp").forEach(function(g){ g.style.display=(g.dataset.group===id)?"block":"none"; });
+  }; });
+  // --- drag the overlay on the preview to reposition ---
+  (function(){
+    var dragging=false;
+    function moveTo(e){ var r=wrap.getBoundingClientRect(); if(!r.width||!r.height) return;
+      state.posX=clamp01((e.clientX-r.left)/r.width); state.posY=clamp01((e.clientY-r.top)/r.height);
+      var px=Math.round(state.posX*100), py=Math.round(state.posY*100);
+      var ex=$("posX"), ey=$("posY"); if(ex) ex.value=px; if(ey) ey.value=py;
+      var vx=$("vPosX"), vy=$("vPosY"); if(vx) vx.textContent=px+"%"; if(vy) vy.textContent=py+"%";
+    }
+    wrap.addEventListener("pointerdown",function(e){ if(!state.ready||state.exporting) return; dragging=true; try{ wrap.setPointerCapture(e.pointerId); }catch(_){}; var dh=$("dragHint"); if(dh) dh.style.opacity=0; moveTo(e); e.preventDefault(); });
+    wrap.addEventListener("pointermove",function(e){ if(dragging) moveTo(e); });
+    wrap.addEventListener("pointerup",function(){ dragging=false; });
+    wrap.addEventListener("pointercancel",function(){ dragging=false; });
+  })();
+
+  loop();
+})();
+</script>
 </body>
 </html>
